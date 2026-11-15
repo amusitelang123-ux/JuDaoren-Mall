@@ -353,7 +353,7 @@ onMounted(async () => {
             {{ submitting ? '提交中…' : '提交订单' }}
           </button>
           <ul class="summary__notes">
-            <li>· 点击提交即表示同意《小兔鲜用户协议》</li>
+            <li>· 点击提交即表示同意《菊道人用户协议》</li>
             <li>· 提交后请在 30 分钟内完成支付</li>
           </ul>
         </aside>

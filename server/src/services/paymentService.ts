@@ -49,7 +49,7 @@ export async function prepay(userId: number, input: PrepayInput) {
     payNo: record.payNo,
     orderNo: order.orderNo,
     amount: record.amount,
-    subject: `小兔鲜订单 ${order.orderNo}`,
+    subject: `菊道人订单 ${order.orderNo}`,
     channel: input.channel,
   })
   record.requestBody = JSON.stringify(result)

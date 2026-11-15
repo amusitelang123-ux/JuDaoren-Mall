@@ -143,7 +143,7 @@ async function loadHistory(conversationId: number): Promise<AiToolMessage[]> {
 
 async function loadUserNickname(userId: number): Promise<string> {
   const user = await User.findByPk(userId, { attributes: ['nickname', 'username'] })
-  return user?.nickname || user?.username || '小兔用户'
+  return user?.nickname || user?.username || '菊友'
 }
 
 interface OrderContext {
@@ -190,10 +190,10 @@ function buildCustomerServicePrompt(context: {
 }): string {
   const { nickname, order, knowledge } = context
   return renderSystemPrompt({
-    persona: '你是「小兔鲜」自营商城的在线客服助手，服务对象是已登录的商城用户。',
+    persona: '你是「菊道人」自营商城的在线客服助手，服务对象是已登录的商城用户。',
     facts: [
       `当前时间：${nowText()}`,
-      `用户昵称：${nickname || '小兔用户'}`,
+      `用户昵称：${nickname || '菊友'}`,
       `关联订单：${
         order
           ? `${order.orderNo}（状态：${order.statusText}，实付 ¥${order.payAmount}，共 ${order.itemCount} 件，下单时间 ${order.createdAt}${order.shipTime ? `，发货时间 ${order.shipTime}` : ''}，收货人 ${order.receiver}）`

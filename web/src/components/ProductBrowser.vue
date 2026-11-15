@@ -6,6 +6,7 @@ import type { Brand, Category, Product, ProductFilterPatch } from '@/api/types'
 import ProductCard from './ProductCard.vue'
 import Pagination from './Pagination.vue'
 import EmptyState from './EmptyState.vue'
+import CategoryIcon from './CategoryIcon.vue'
 import { findTopCategoryId } from '@/utils/category'
 
 const props = withDefaults(
@@ -198,11 +199,13 @@ onMounted(async () => {
       <h3 class="side__title">商品分类</h3>
       <ul class="side__tree">
         <li>
-          <button :class="{ 'is-active': !query.categoryId }" @click="pickCategory(undefined)">全部分类</button>
+          <button :class="{ 'is-active': !query.categoryId }" @click="pickCategory(undefined)">
+            <span class="side__label"><CategoryIcon name="all" :size="17" /> 全部分类</span>
+          </button>
         </li>
         <li v-for="c in tops" :key="c.id">
           <button :class="{ 'is-open': activeTop === c.id }" @click="pickTop(c.id)">
-            <span>{{ c.icon }} {{ c.name }}</span>
+            <span class="side__label"><CategoryIcon :category="c" :size="17" /> {{ c.name }}</span>
             <span class="side__arrow">{{ activeTop === c.id ? '▾' : '▸' }}</span>
           </button>
           <ul v-if="activeTop === c.id" class="side__children">
@@ -334,6 +337,12 @@ onMounted(async () => {
 .side__arrow {
   color: var(--text-muted);
   font-size: 11px;
+}
+.side__label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
 }
 .side__brands {
   display: flex;

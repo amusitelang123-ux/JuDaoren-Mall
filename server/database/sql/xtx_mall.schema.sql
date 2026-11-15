@@ -1,6 +1,6 @@
 -- =============================================================
--- 小兔鲜电商 (XiaoTuXian Mall) · MySQL 8.0 数据库结构
--- 设计约定（详见 docs/小兔鲜电商-开发企划.md 4.1）:
+-- 菊道人商城 (JuDaoren Mall) · MySQL 8.0 数据库结构
+-- 设计约定（详见 docs/菊道人商城-开发企划.md 4.1）:
 --   * 引擎 InnoDB / 字符集 utf8mb4
 --   * 主键 id BIGINT UNSIGNED AUTO_INCREMENT
 --   * 金额 DECIMAL(10,2)（禁用 FLOAT/DOUBLE）

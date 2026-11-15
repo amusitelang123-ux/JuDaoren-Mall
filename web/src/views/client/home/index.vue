@@ -2,8 +2,10 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { homeApi, type HomeData } from '@/api'
+import CategoryIcon from '@/components/CategoryIcon.vue'
 import ProductCard from '@/components/ProductCard.vue'
 import PriceTag from '@/components/PriceTag.vue'
+import { getCategoryTint } from '@/utils/categoryIcon'
 
 const router = useRouter()
 const data = ref<HomeData | null>(null)
@@ -67,7 +69,7 @@ onBeforeUnmount(() => {
       <div v-if="current" class="hero__slide" :style="{ background: current.bg }">
         <img :src="current.image" :alt="current.title" class="hero__img" />
         <div class="hero__overlay container">
-          <p class="hero__eyebrow">小兔鲜 · 平台自营</p>
+          <p class="hero__eyebrow">菊道人 · 平台自营</p>
           <h1 class="hero__title">{{ current.title }}</h1>
           <p class="hero__subtitle">{{ current.subtitle }}</p>
           <button class="btn btn-primary hero__cta" @click="router.push(current.link)">立即选购</button>
@@ -87,31 +89,6 @@ onBeforeUnmount(() => {
     </section>
 
     <div class="container">
-      <!-- Promo cards (kept clear of the hero banner) -->
-      <section class="promos">
-        <div class="promo">
-          <h3>新人专享</h3>
-          <img :src="'/favicon.svg'" alt="" class="promo__img" />
-          <p>注册即领 88 元券包</p>
-          <router-link to="/coupons" class="link">立即领取</router-link>
-        </div>
-        <div class="promo promo--navy">
-          <h3>数码焕新季</h3>
-          <p class="promo__big">低至 8 折</p>
-          <button class="btn btn-primary btn-sm" @click="router.push('/category/101')">去看看</button>
-        </div>
-        <div class="promo promo--green">
-          <h3>产地直采</h3>
-          <p class="promo__big">生鲜包邮</p>
-          <button class="btn btn-primary btn-sm" @click="router.push('/category/104')">去看看</button>
-        </div>
-        <div class="promo">
-          <h3>家居焕新</h3>
-          <p class="promo__big">满 300 减 60</p>
-          <button class="btn btn-primary btn-sm" @click="router.push('/category/103')">去看看</button>
-        </div>
-      </section>
-
       <!-- Categories -->
       <section class="quick">
         <router-link
@@ -120,7 +97,9 @@ onBeforeUnmount(() => {
           :to="`/category/${c.id}`"
           class="quick__item"
         >
-          <span class="quick__icon">{{ c.icon }}</span>
+          <span class="quick__icon" :style="{ background: getCategoryTint(c) }">
+            <CategoryIcon :category="c" :size="36" />
+          </span>
           <span class="quick__name">{{ c.name }}</span>
         </router-link>
       </section>
@@ -286,59 +265,6 @@ onBeforeUnmount(() => {
   border-radius: 100px;
 }
 
-.promos {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
-  margin-top: 24px;
-  position: relative;
-  z-index: 5;
-}
-.promo {
-  background: #fff;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-card);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 170px;
-}
-.promo h3 {
-  font-size: 18px;
-  font-weight: 700;
-}
-.promo p {
-  color: var(--text-secondary);
-  font-size: 14px;
-}
-.promo__big {
-  font-size: 24px !important;
-  font-weight: 800;
-  color: var(--amz-price) !important;
-}
-.promo__img {
-  width: 72px;
-  height: 72px;
-  margin: 4px 0;
-}
-.promo--navy {
-  background: linear-gradient(135deg, #232f3e, #37475a);
-  color: #fff;
-}
-.promo--navy p,
-.promo--navy .promo__big {
-  color: #fff !important;
-}
-.promo--green {
-  background: linear-gradient(135deg, #1f4a2e, #2f6b45);
-  color: #fff;
-}
-.promo--green p,
-.promo--green .promo__big {
-  color: #fff !important;
-}
-
 .quick {
   margin-top: 24px;
   background: #fff;
@@ -367,7 +293,12 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  box-shadow: inset 0 0 0 1px rgba(15, 17, 17, 0.035);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.quick__item:hover .quick__icon {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(15, 17, 17, 0.1);
 }
 .quick__name {
   font-size: 13px;
@@ -501,9 +432,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 1100px) {
-  .promos {
-    grid-template-columns: repeat(2, 1fr);
-  }
   .quick {
     grid-template-columns: repeat(4, 1fr);
   }
@@ -521,9 +449,6 @@ onBeforeUnmount(() => {
   .hero__subtitle {
     font-size: 15px;
   }
-  .promos {
-    display: none;
-  }
   .quick {
     grid-template-columns: repeat(4, 1fr);
     margin-top: 16px;
@@ -531,7 +456,9 @@ onBeforeUnmount(() => {
   .quick__icon {
     width: 46px;
     height: 46px;
-    font-size: 22px;
+  }
+  .quick__icon :deep(.cat-icon) {
+    transform: scale(0.82);
   }
   .seckill__head {
     flex-wrap: wrap;

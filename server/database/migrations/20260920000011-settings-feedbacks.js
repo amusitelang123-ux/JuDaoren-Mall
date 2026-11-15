@@ -39,7 +39,7 @@ const TABLES = [
 
 /** 默认配置：与原前端硬编码值保持一致，便于平滑替换 */
 const SETTINGS_SEED = [
-  { config_group: 'site', config_key: 'site.name', config_value: '小兔鲜', remark: '站点名称' },
+  { config_group: 'site', config_key: 'site.name', config_value: '菊道人', remark: '站点名称' },
   { config_group: 'site', config_key: 'site.logo', config_value: '', remark: '站点 Logo 地址' },
   { config_group: 'site', config_key: 'site.slogan', config_value: '正品好物 极速送达', remark: '站点标语' },
   { config_group: 'service', config_key: 'service.phone', config_value: '400-000-0000', remark: '客服热线' },

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import CategoryIcon from '@/components/CategoryIcon.vue'
 import ProductBrowser from '@/components/ProductBrowser.vue'
 import { categoryApi } from '@/api'
 import type { Category } from '@/api/types'
@@ -31,7 +32,7 @@ onMounted(async () => {
     <div class="container">
       <nav class="catnav card">
         <button class="catnav__item" :class="{ 'is-active': !categoryId }" @click="router.push('/products')">
-          <span class="catnav__icon">🏷️</span>
+          <span class="catnav__icon"><CategoryIcon name="all" :size="16" /></span>
           <span>全部商品</span>
         </button>
         <button
@@ -41,7 +42,7 @@ onMounted(async () => {
           :class="{ 'is-active': activeTop === c.id }"
           @click="router.push(`/category/${c.id}`)"
         >
-          <span class="catnav__icon">{{ c.icon }}</span>
+          <span class="catnav__icon"><CategoryIcon :category="c" :size="16" /></span>
           <span>{{ c.name }}</span>
         </button>
       </nav>
@@ -81,6 +82,16 @@ onMounted(async () => {
   font-weight: 700;
 }
 .catnav__icon {
-  font-size: 16px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #f2f4f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.catnav__item.is-active .catnav__icon {
+  background: rgba(255, 255, 255, 0.92);
 }
 </style>

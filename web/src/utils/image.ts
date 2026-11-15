@@ -73,7 +73,7 @@ function escapeXml(s: string): string {
 export function avatar(seed: string): string {
   const h = hash(seed)
   const [c1, c2] = PALETTES[h % PALETTES.length]
-  const letter = (seed.trim()[0] || '兔').toUpperCase()
+  const letter = (seed.trim()[0] || '菊').toUpperCase()
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
 <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>
 <circle cx="32" cy="32" r="32" fill="url(#g)"/>

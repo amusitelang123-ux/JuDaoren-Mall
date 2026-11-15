@@ -15,7 +15,7 @@ function toFeedbackDto(f: Feedback & { user?: User | null }) {
   return {
     id: Number(f.id),
     userId: Number(f.userId),
-    nickname: f.user?.nickname ?? f.user?.username ?? '小兔用户',
+    nickname: f.user?.nickname ?? f.user?.username ?? '菊友',
     avatar: f.user?.avatar ?? '',
     type: f.type,
     content: f.content,

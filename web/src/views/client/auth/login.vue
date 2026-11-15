@@ -124,8 +124,8 @@ onMounted(refreshCaptcha)
   <div class="auth">
     <div class="auth__top">
       <router-link to="/" class="auth__brand">
-        <span class="auth__logo">🐰</span>
-        <span class="auth__name">小兔鲜</span>
+        <img src="/logo-mark.png" class="auth__logo" alt="菊道人" />
+        <span class="auth__name">菊道人</span>
       </router-link>
       <router-link to="/register" class="auth__switch">还没有账号？免费注册</router-link>
     </div>
@@ -207,14 +207,14 @@ onMounted(refreshCaptcha)
         </div>
 
         <p class="auth-card__terms">
-          登录即表示同意小兔鲜的
+          登录即表示同意菊道人的
           <a href="javascript:void(0)" class="link">使用条件</a> 与
           <a href="javascript:void(0)" class="link">隐私声明</a>
         </p>
       </div>
     </div>
 
-    <footer class="auth__footer">© 2026 小兔鲜电商 · 教学演示项目</footer>
+    <footer class="auth__footer">© 2026 菊道人商城 · 教学演示项目</footer>
   </div>
 </template>
 
@@ -237,7 +237,9 @@ onMounted(refreshCaptcha)
   gap: 8px;
 }
 .auth__logo {
-  font-size: 30px;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
 }
 .auth__name {
   font-size: 26px;

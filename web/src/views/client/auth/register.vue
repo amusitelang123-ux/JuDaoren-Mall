@@ -95,8 +95,8 @@ async function submit() {
   <div class="auth">
     <div class="auth__top">
       <router-link to="/" class="auth__brand">
-        <span class="auth__logo">🐰</span>
-        <span class="auth__name">小兔鲜</span>
+        <img src="/logo-mark.png" class="auth__logo" alt="菊道人" />
+        <span class="auth__name">菊道人</span>
       </router-link>
       <router-link to="/login" class="auth__switch">已有账号？立即登录</router-link>
     </div>
@@ -141,7 +141,7 @@ async function submit() {
 
           <label class="agree">
             <input v-model="agreed" type="checkbox" />
-            <span>我已阅读并同意《小兔鲜用户协议》与《隐私政策》</span>
+            <span>我已阅读并同意《菊道人用户协议》与《隐私政策》</span>
           </label>
 
           <button class="btn btn-primary btn-block auth-card__submit" :disabled="loading" @click="submit">
@@ -151,7 +151,7 @@ async function submit() {
       </div>
     </div>
 
-    <footer class="auth__footer">© 2026 小兔鲜电商 · 教学演示项目</footer>
+    <footer class="auth__footer">© 2026 菊道人商城 · 教学演示项目</footer>
   </div>
 </template>
 
@@ -174,7 +174,9 @@ async function submit() {
   gap: 8px;
 }
 .auth__logo {
-  font-size: 30px;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
 }
 .auth__name {
   font-size: 26px;

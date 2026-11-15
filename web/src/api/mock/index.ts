@@ -821,7 +821,7 @@ export const mockApi: ClientApi = {
       const item: FeedbackItem = {
         id: Date.now(),
         userId: 1,
-        nickname: '小兔用户',
+        nickname: '菊友',
         avatar: '',
         type: payload.type,
         content: payload.content,
@@ -845,7 +845,7 @@ export const mockApi: ClientApi = {
   configApi: {
     public: (): Promise<PublicConfig> =>
       delay({
-        siteName: '小兔鲜',
+        siteName: '菊道人',
         logo: '',
         slogan: '正品好物 极速送达',
         servicePhone: '400-000-0000',
@@ -875,7 +875,7 @@ export const mockApi: ClientApi = {
         mode: 'mock',
         model: 'mock-customer-service',
         usingFallback: false,
-        welcome: '你好，我是小兔鲜 AI 客服（演示模式）。订单、物流、退换货、发票都可以问我。',
+        welcome: '你好，我是菊道人 AI 客服（演示模式）。订单、物流、退换货、发票都可以问我。',
         quickQuestions: ['我的订单什么时候发货？', '帮我查一下物流到哪了', '想退货，流程是怎样的？', '怎么开发票？'],
         disclaimer: '演示模式回答为内置话术；配置 DEEPSEEK_API_KEY 后由 DeepSeek 生成。',
       }),

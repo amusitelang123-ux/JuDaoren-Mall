@@ -146,7 +146,7 @@ export async function createRecharge(userId: number, input: RechargeInput) {
       payNo,
       orderNo: payNo,
       amount: record.amount,
-      subject: `小兔鲜余额充值 ${payNo}`,
+      subject: `菊道人余额充值 ${payNo}`,
       channel: input.channel,
     })
     record.requestBody = JSON.stringify(result)

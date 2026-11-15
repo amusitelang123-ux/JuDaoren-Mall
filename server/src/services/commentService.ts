@@ -27,7 +27,7 @@ function toAdminCommentDto(c: ProductComment & { product?: Product | null; user?
   return {
     id: Number(c.id),
     userId: Number(c.userId),
-    nickname: c.user?.nickname ?? c.user?.username ?? '小兔用户',
+    nickname: c.user?.nickname ?? c.user?.username ?? '菊友',
     avatar: c.user?.avatar ?? '',
     productId: Number(c.productId),
     productName: c.product?.name ?? '',

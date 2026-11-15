@@ -15,7 +15,7 @@ async function bootstrap() {
 
   const app = createApp()
   app.listen(config.port, () => {
-    console.log(`[server] 小兔鲜 API 已启动 → http://localhost:${config.port}/api/health`)
+    console.log(`[server] 菊道人 API 已启动 → http://localhost:${config.port}/api/health`)
   })
 
   startCloseExpiredOrdersJob()
