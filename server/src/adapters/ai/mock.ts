@@ -1,15 +1,31 @@
-import type {
-  AiAdapter,
-  AiChatRequest,
-  AiChatResult,
-  AiToolCall,
-  AiUsage,
-} from './types'
+import type { AiAdapter, AiChatRequest, AiChatResult, AiToolCall, AiUsage } from './types'
 
 /**
  * 演示适配器：无需 API Key、无需外网，用于本地联调与答辩兜底。
- * 会模拟一次 function calling（订单/物流问题），以便离线验证工具链路。
+ *
+ * 改进点（改进方向 §11 反模式 4）：话术不再写死。每个业务场景在初始化时
+ * 通过 `registerMockScenario(scenario, handler)` 注册自己的预置回答，
+ * 新增场景不需要再来改这个文件。未注册的场景走通用兜底话术。
  */
+
+export interface MockContext {
+  question: string
+  /** 最近一次工具返回的结构化结果（没有则为 null） */
+  tool: Record<string, unknown> | null
+  scenario: string
+}
+
+export type MockHandler = (context: MockContext) => string | null
+
+const scenarios = new Map<string, MockHandler>()
+
+export function registerMockScenario(scenario: string, handler: MockHandler): void {
+  scenarios.set(scenario, handler)
+}
+
+export function registeredMockScenarios(): string[] {
+  return [...scenarios.keys()]
+}
 
 const ORDER_HINT = /订单|物流|快递|发货|到货|签收|单号|到哪|退款|退货/
 
@@ -40,7 +56,8 @@ function parseToolResult(request: AiChatRequest): Record<string, unknown> | null
   return null
 }
 
-function composeAnswer(question: string, tool: Record<string, unknown> | null): string {
+/** 客服场景的内置话术：命中订单类问题时会配合工具结果作答 */
+function customerServiceAnswer(question: string, tool: Record<string, unknown> | null): string {
   const lower = question.toLowerCase()
   const orderNo = typeof tool?.orderNo === 'string' ? tool.orderNo : ''
   const statusText = typeof tool?.statusText === 'string' ? tool.statusText : ''
@@ -84,21 +101,28 @@ function composeAnswer(question: string, tool: Record<string, unknown> | null): 
   return `关于「${question.slice(0, 30)}」，我目前掌握的信息还不够准确。你可以补充订单号或具体商品，我再帮你查；也可以点「转人工」由客服跟进。\n\n（当前为演示模式，配置 DEEPSEEK_API_KEY 后会启用完整知识库问答）`
 }
 
+registerMockScenario('customer_service', ({ question, tool }) => customerServiceAnswer(question, tool))
+
+const GENERIC_HINT = '（当前为演示模式：未配置 DEEPSEEK_API_KEY，这是内置的兜底回答）'
+
+function genericAnswer(scenario: string, question: string): string {
+  return `演示模式没有为场景「${scenario}」准备话术，以下是通用兜底回答：\n关于「${question.slice(0, 40)}」，我已记录你的问题。\n\n${GENERIC_HINT}`
+}
+
 export class MockAiAdapter implements AiAdapter {
   readonly name = 'mock'
-  readonly model = 'mock-customer-service'
+  readonly model = 'mock-ai'
   readonly configured = true
 
   async chat(request: AiChatRequest): Promise<AiChatResult> {
     const startedAt = Date.now()
+    const scenario = request.scenario || 'customer_service'
     const question = lastUserContent(request)
     const hasToolResult = request.messages.some((m) => m.role === 'tool')
 
-    // 首次命中订单类问题：模拟模型发起一次工具调用
-    if (!hasToolResult && request.tools?.length && ORDER_HINT.test(question)) {
-      const name = /物流|快递|单号|到哪|签收/.test(question)
-        ? 'get_order_logistics'
-        : 'get_order_detail'
+    // 客服场景：首次命中订单类问题时模拟一次 function calling，便于离线验证工具链路
+    if (scenario === 'customer_service' && !hasToolResult && request.tools?.length && ORDER_HINT.test(question)) {
+      const name = /物流|快递|单号|到哪|签收/.test(question) ? 'get_order_logistics' : 'get_order_detail'
       const toolCalls: AiToolCall[] = [{ id: `mock_${Date.now()}`, name, arguments: '{}' }]
       await new Promise((resolve) => setTimeout(resolve, 120))
       return {
@@ -111,7 +135,10 @@ export class MockAiAdapter implements AiAdapter {
       }
     }
 
-    const answer = composeAnswer(question, parseToolResult(request))
+    const handler = scenarios.get(scenario)
+    const tool = parseToolResult(request)
+    const answer = handler?.({ question, tool, scenario }) ?? genericAnswer(scenario, question)
+
     const chunks = answer.match(/[\s\S]{1,18}/g) ?? [answer]
     for (const chunk of chunks) {
       if (request.signal?.aborted) break

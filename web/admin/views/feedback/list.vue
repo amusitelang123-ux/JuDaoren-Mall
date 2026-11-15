@@ -2,7 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { adminApi } from '@admin/api'
-import type { AdminFeedback } from '@admin/api'
+import type { AdminFeedback, AdminHelpdeskResult } from '@admin/api'
 import { useAdminStore } from '@admin/stores/admin'
 
 const admin = useAdminStore()
@@ -20,8 +20,17 @@ const query = reactive({
 
 const TYPE_TEXT: Record<number, string> = { 1: '咨询', 2: '投诉', 3: '建议' }
 const STATUS_TEXT: Record<number, string> = { 0: '待处理', 1: '已回复', 2: '已关闭' }
+const URGENCY_TEXT: Record<string, string> = { low: '不急', normal: '一般', high: '较急' }
 
-const replyDialog = reactive({ visible: false, id: 0, content: '', target: '' })
+const replyDialog = reactive({
+  visible: false,
+  id: 0,
+  content: '',
+  target: '',
+  /** AI 坐席辅助结果；null 表示这次是人工直接回复 */
+  assist: null as AdminHelpdeskResult | null,
+  assisting: false,
+})
 const detailDialog = reactive({ visible: false, data: null as AdminFeedback | null })
 
 function statusType(status: number) {
@@ -61,7 +70,49 @@ function openDetail(row: AdminFeedback) {
 }
 
 function openReply(row: AdminFeedback) {
-  Object.assign(replyDialog, { visible: true, id: row.id, content: '', target: row.content.slice(0, 40) })
+  Object.assign(replyDialog, {
+    visible: true,
+    id: row.id,
+    content: '',
+    target: row.content.slice(0, 40),
+    assist: null,
+    assisting: false,
+  })
+}
+
+/**
+ * AI 坐席辅助：归类 + 相似工单 + 回复草稿。
+ * 草稿只填进输入框，人工确认后才真正发出——AI 不直连写库。
+ */
+async function runAssist(id: number) {
+  replyDialog.assisting = true
+  try {
+    const result = await adminApi.aiApi.feedbackDraft(id)
+    replyDialog.assist = result
+    if (!replyDialog.content.trim()) replyDialog.content = result.draft
+    const row = list.value.find((item) => item.id === id)
+    if (row) {
+      row.aiCategory = result.category
+      row.aiSummary = result.summary
+    }
+    if (result.degraded) ElMessage.warning('AI 暂不可用，已给出模板草稿，请人工确认')
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : 'AI 辅助失败')
+  } finally {
+    replyDialog.assisting = false
+  }
+}
+
+function assistReply(row: AdminFeedback) {
+  Object.assign(replyDialog, {
+    visible: true,
+    id: row.id,
+    content: '',
+    target: row.content.slice(0, 40),
+    assist: null,
+    assisting: false,
+  })
+  void runAssist(row.id)
 }
 
 async function submitReply() {
@@ -127,14 +178,18 @@ onMounted(load)
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="类型" width="90">
+        <el-table-column label="类型" width="120">
           <template #default="{ row }">
             <el-tag size="small">{{ TYPE_TEXT[row.type] ?? row.type }}</el-tag>
+            <el-tag v-if="row.aiCategory" size="small" type="warning" effect="plain" class="ai-tag">
+              AI:{{ row.aiCategory }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="留言内容" min-width="240">
           <template #default="{ row }">
             <p class="content">{{ row.content }}</p>
+            <p v-if="row.aiSummary" class="reply ai-summary">AI 摘要：{{ row.aiSummary }}</p>
             <p v-if="row.replyContent" class="reply">回复：{{ row.replyContent }}</p>
           </template>
         </el-table-column>
@@ -147,11 +202,19 @@ onMounted(load)
           </template>
         </el-table-column>
         <el-table-column label="提交时间" prop="createdAt" width="170" />
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openDetail(row)">详情</el-button>
             <el-button v-if="admin.hasPerm('feedback:update') && row.status !== 2" link type="primary" @click="openReply(row)">
               回复
+            </el-button>
+            <el-button
+              v-if="admin.hasPerm('ai:helpdesk') && row.status !== 2"
+              link
+              type="warning"
+              @click="assistReply(row)"
+            >
+              AI 辅助
             </el-button>
             <el-button
               v-if="admin.hasPerm('feedback:update') && row.status !== 2"
@@ -177,11 +240,47 @@ onMounted(load)
       </div>
     </el-card>
 
-    <el-dialog v-model="replyDialog.visible" title="回复工单" width="520px">
+    <el-dialog v-model="replyDialog.visible" title="回复工单" width="560px">
       <p class="muted dialog-quote">用户留言：{{ replyDialog.target }}…</p>
-      <el-input v-model="replyDialog.content" type="textarea" :rows="5" maxlength="2000" placeholder="请输入回复内容" />
+
+      <div v-if="replyDialog.assisting" class="muted assist-loading">AI 正在归类并生成回复草稿…</div>
+      <div v-else-if="replyDialog.assist" class="assist">
+        <div class="assist__head">
+          <el-tag size="small" type="warning" effect="plain">AI 归类：{{ replyDialog.assist.category }}</el-tag>
+          <el-tag size="small" :type="replyDialog.assist.urgency === 'high' ? 'danger' : 'info'" effect="plain">
+            紧急度：{{ URGENCY_TEXT[replyDialog.assist.urgency] ?? replyDialog.assist.urgency }}
+          </el-tag>
+          <span class="muted">摘要：{{ replyDialog.assist.summary }}</span>
+        </div>
+        <div v-if="replyDialog.assist.citations.length" class="assist__block">
+          <b>命中的平台规则</b>
+          <el-tag v-for="(c, i) in replyDialog.assist.citations" :key="i" size="small" effect="plain">
+            [{{ i + 1 }}] {{ c.title }}
+          </el-tag>
+        </div>
+        <div v-if="replyDialog.assist.similarTickets.length" class="assist__block">
+          <b>相似历史工单</b>
+          <div v-for="t in replyDialog.assist.similarTickets" :key="t.id" class="assist__ticket">
+            <p class="muted">#{{ t.id }} · 相似度 {{ t.score }}</p>
+            <p>{{ t.content }}</p>
+            <p class="muted">当时回复：{{ t.replyContent }}</p>
+          </div>
+        </div>
+        <p class="muted assist__hint">
+          {{ replyDialog.assist.degraded ? 'AI 暂不可用，以上为模板草稿。' : '草稿由 AI 生成，请确认后再发送。' }}
+        </p>
+      </div>
+
+      <el-input v-model="replyDialog.content" type="textarea" :rows="6" maxlength="2000" placeholder="请输入回复内容" />
       <template #footer>
         <el-button @click="replyDialog.visible = false">取消</el-button>
+        <el-button
+          v-if="!replyDialog.assist && admin.hasPerm('ai:helpdesk')"
+          :loading="replyDialog.assisting"
+          @click="runAssist(replyDialog.id)"
+        >
+          让 AI 拟稿
+        </el-button>
         <el-button type="primary" @click="submitReply">发送回复</el-button>
       </template>
     </el-dialog>
@@ -248,6 +347,49 @@ onMounted(load)
   font-size: 12px;
   color: #8a93a0;
   margin-top: 4px;
+}
+.ai-summary {
+  color: #b45309;
+}
+.ai-tag {
+  margin-left: 6px;
+}
+.assist {
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: #fafbfc;
+}
+.assist__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+}
+.assist__block {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+}
+.assist__block :deep(.el-tag) {
+  align-self: flex-start;
+}
+.assist__ticket {
+  background: #fff;
+  border: 1px dashed #e4e7ed;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+}
+.assist__hint {
+  margin-top: 8px;
+}
+.assist-loading {
+  margin-bottom: 12px;
 }
 .muted {
   color: #9aa3af;

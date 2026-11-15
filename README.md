@@ -4,7 +4,9 @@
 
 - 开发企划书：`docs/小兔鲜电商-开发企划.md`
 - AI 客服设计说明：`docs/AI智能客服-实现说明.md`
-- 当前进度：用户端页面 + 用户端完整 API + 后台管理端（独立应用）+ MySQL 库表 + AI 智能客服（DeepSeek，可离线降级）
+- AI 深度集成方向（v2，含平台层抽取与后续路线）：`docs/AI深度集成-改进方向.md`
+- AI 深度集成实施说明（本轮落地范围、关键决策与验证方法）：`docs/AI深度集成-实施说明.md`
+- 当前进度：用户端页面 + 用户端完整 API + 后台管理端（独立应用）+ MySQL 库表 + AI 平台层（客服 / 搜索理解 / 文案 / 坐席辅助，可离线降级 + 可评测）
 
 ## 技术栈
 
@@ -174,7 +176,11 @@ VITE_USE_MOCK=true
 | `DEEPSEEK_API_KEY` | 空 | DeepSeek 密钥；**留空自动降级为演示模式** |
 | `DEEPSEEK_MODEL` | `deepseek-chat` | 对话模型（可换 `deepseek-reasoner`） |
 | `AI_ADAPTER` | `deepseek` | `deepseek` / `mock` |
-| `AI_DAILY_BUDGET_CNY` | `20` | 每日成本上限，超出后停止调用并引导转人工 |
+| `AI_SCENARIOS` | 四个场景全开 | 部署级场景开关，逗号分隔 |
+| `AI_BUDGET_CHAT_CNY` / `AI_BUDGET_ADMIN_CNY` / `AI_BUDGET_OTHER_CNY` | `12` / `6` / `2` | 分模块每日成本上限 |
+| `AI_RATE_CHAT_PER_MIN` / `AI_RATE_ADMIN_PER_MIN` / `AI_RATE_OTHER_PER_MIN` | `12` / `30` / `60` | 分模块每分钟调用上限 |
+| `AI_SEARCH_PARSE_TIMEOUT_MS` | `2500` | 搜索解析硬超时，超时退回关键词检索 |
+| `AI_DAILY_BUDGET_CNY` | `20` | 遗留总量上限，仅在未配置 `AI_BUDGET_CHAT_CNY` 时生效 |
 
 ## 常用脚本
 
@@ -189,6 +195,7 @@ VITE_USE_MOCK=true
 | `npm run db:migrate` / `db:migrate:undo` | 执行 / 回滚迁移 |
 | `npm run db:seed` / `db:seed:undo` | 写入 / 清空种子数据 |
 | `npm run db:reset` | 重置数据库（常用） |
+| `npm run ai:eval` | 跑 AI 评测集（`--mock` 走规则基线，`--threshold=85` 设阈值） |
 
 ### web
 
@@ -226,7 +233,8 @@ VITE_USE_MOCK=true
 | 评价 | `GET /api/client/v1/user/comments`、`POST /comments`、`POST /comments/images`（晒单图上传） |
 | 优惠券 | `GET /api/client/v1/coupons/center`、`POST /coupons/:id/receive` |
 | 公告 | `GET /api/client/v1/notices`、`/notices/:id` |
-| AI 客服 | `GET /ai/config`、`POST /ai/chat`（SSE 流式）、`GET /ai/conversations`、`GET /ai/conversations/:id/messages`、`POST /ai/conversations/:id/transfer` |
+| AI | `GET /ai/config`、`POST /ai/chat`（SSE 流式）、`GET /ai/conversations`、`GET /ai/conversations/:id/messages`、`POST /ai/conversations/:id/transfer` |
+| AI 平台化 | `POST /ai/messages/:id/feedback`（👍/👎）、`POST /ai/search/parse`（查询理解）、`GET /search/hot`（热门搜索） |
 
 > 订单删除遵循企划 4.1「订单类不删除只置状态」：`DELETE /orders/:orderNo` 仅置 `orders.user_deleted=1` 做用户侧隐藏，订单、支付与财务记录全部保留，后台订单管理仍可查询。
 >
@@ -236,29 +244,50 @@ VITE_USE_MOCK=true
 
 数据库设计详见 `server/database/sql/xtx_mall.schema.sql`。
 
-## AI 智能客服（DeepSeek）
+## AI 平台（客服 + 搜索理解 + 文案 + 坐席辅助）
 
-用户端有两个入口：
+AI 已经不是一个挂在商城旁边的独立子系统，而是**一层可插拔的平台**：场景只写提示词与输出结构，
+限流、预算、熔断、审计、降级由平台层统一提供。
 
-- **订单详情 → 联系客服 → AI 客服**：自动带上当前订单，可直接问物流/发货
-- **帮助中心 → AI 客服**：可选择要咨询的订单，也可以选择「不选择订单」咨询退换货、发票等通用问题
-
-回答基于两层数据：
-
-- **知识库**：`faqs`、`notices`、`logistics_companies`、`freight_templates`，以及 `server/src/services/aiPolicies.ts` 中的平台规则（发货、退换货、退款、运费、发票、积分、账户安全）
-- **订单数据**：通过 function calling 调用 `get_order_detail` / `get_order_logistics`，**只能查询当前登录用户自己的订单**
-
-### 配置 Key（位置已预留）
-
-打开 `server/.env`，填这一行即可：
-
-```env
-DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxx
+```
+server/src/ai/
+├── core/       run.ts（编排）guard.ts（限流/预算/熔断/场景开关）audit.ts（调用审计）
+│               output.ts（zod 校验 + 重试 + 降级）cache.ts（结果缓存）
+├── rag/        sources/（知识源注册表）retriever.ts（BM25）sync.ts（同步）
+├── tools/      registry.ts（工具注册 + zod 入参校验 + authz）order.ts product.ts
+├── scenarios/  customerService.ts / searchParse.ts / marketingCopy.ts / helpdeskDraft.ts
+└── eval/       runner.ts + cli.ts（npm run ai:eval）
 ```
 
-- 留空也能跑：自动降级为 `mock` 适配器，页面显示「演示模式」，功能链路完整但回答是内置话术
-- 改完重启后端（`npm run dev`）生效
-- 密钥只从环境变量读取，不落库、不进日志；`.env` 已在 `.gitignore` 中
+`server/src/adapters/ai/` 只负责「跟厂商说话」，场景与治理全部在 `server/src/ai/`。
+
+### 四个场景
+
+| 场景 | 入口 | 说明 |
+| --- | --- | --- |
+| 智能客服 `customer_service` | 订单详情 / 帮助中心弹窗 | 知识库 + 订单工具；流式输出、可转人工 |
+| 搜索理解 `search_parse` | 搜索页 | 把「200 块以内的白色 T 恤」解析成检索参数，结果页显示可点掉的 chips |
+| 营销文案 `marketing_copy` | 后台 → AI 平台 → 文案工坊 | 一次 3 个版本，违禁词整条拦截，**不自动保存** |
+| 坐席辅助 `helpdesk_draft` | 后台 → 留言工单 →「AI 辅助」 | 归类 + 相似工单 + 回复草稿，人工确认后才发出 |
+
+### 治理与可观测
+
+- **分模块预算**：`AI_BUDGET_CHAT_CNY` / `AI_BUDGET_ADMIN_CNY` / `AI_BUDGET_OTHER_CNY`，后台场景不会抢用户端额度
+- **三级场景开关**：`.env` 的 `AI_SCENARIOS` → `settings` 表的 `ai.scenario.<场景>.enabled`（30s 热更）→ `ai.scenario.<场景>.grayUserIds` 灰度
+- **兜底与熔断**：搜索解析 2.5s 硬超时后退回规则解析；结构化输出校验失败重试 1 次后降级；连续失败自动熔断 60s
+- **审计**：`ai_call_logs` 记录 `module` / `scenario` / `cache_hit` / `fallback_reason`，后台「AI 平台 → 分模块用量」可下钻
+- **质量指标**：👍/👎 落 `ai_feedback`，后台展示兜底率、转人工率、好评率
+
+### 评测
+
+```bash
+cd server
+npm run ai:eval                  # 跑 ai_eval_cases，输出准确率 / 降级率 / P95 延迟
+npm run ai:eval -- --mock        # 不调用模型，只跑规则基线（离线答辩、CI 用）
+npm run ai:eval -- --threshold=85
+```
+
+评测集用例在 `server/database/seeders/20261115000016-ai-eval-cases.js`，后台「AI 平台 → 评测」也能一键运行。
 
 ### 能力与边界
 
@@ -266,19 +295,21 @@ DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxx
 - 会话按订单隔离：选择订单进入该订单的会话，不选订单则进入通用会话，互不串台
 - 回答写入 `ai_messages`，知识引用 `[1]`/`[2]` 可追溯；调用 token、耗时、成本写入 `ai_call_logs`
 - **AI 不参与金额计算、库存扣减与订单状态流转**；退款/赔付类只复述规则，结果以人工审核为准
-- 单用户 12 次/分钟限流；`AI_DAILY_BUDGET_CNY` 超限后自动停止调用并提示转人工
-
-### 后台
-
-「AI 客服」菜单（`/admin/ai`，权限码 `ai:view` / `ai:manage`）可查看会话与消息、今日/近 7 天用量与成本，并**重建知识库**——改了 FAQ、公告、物流或运费模板后点一次即可生效。
+- 搜索解析只负责「把话翻译成参数」：价格上限、上下架、库存过滤全部在 SQL 侧完成，模型给的类目/品牌名一律回查数据库换成 id
+- AI 关掉时业务照常：客服退回在线留言、搜索退回关键词检索、文案退回模板、坐席退回人工
 
 ### 相关表与代码
 
-- 表：`ai_conversations` / `ai_messages` / `ai_kb_chunks` / `ai_call_logs`（迁移 `20261030000026-ai-customer-service.js`）
-- 适配器：`server/src/adapters/ai/`（`deepseek` + `mock`，与支付适配器同一套分层）
-- 编排：`server/src/services/aiChatService.ts`、`aiKnowledgeService.ts`、`aiPrompt.ts`
+- 表：`ai_conversations` / `ai_messages` / `ai_kb_chunks` / `ai_call_logs` / `ai_feedback` / `ai_eval_cases` / `search_logs`
+  （迁移 `20261030000026-ai-customer-service.js` + `20261115000027-ai-platform-upgrade.js`）
+- 适配器：`server/src/adapters/ai/`（`deepseek` + `mock`，mock 话术按场景注册）
+- 平台层：`server/src/ai/`（见上面的目录树）
 
-> 首次升级到本版本需要执行 `npm run db:migrate` 建 AI 表，并执行一次 `npm run db:seed` 写入「AI 客服」菜单权限。
+> 首次升级到本版本需要执行 `npm run db:migrate`，再执行
+> `npm run db:seed -- --seed 20261115000015-ai-domain-permissions.js`
+> `npm run db:seed -- --seed 20261115000016-ai-eval-cases.js`
+> `npm run db:seed -- --seed 20261115000018-ai-scenario-settings.js`
+> 写入 AI 域权限、评测用例与场景开关配置。
 
 ## 常见问题
 
@@ -294,8 +325,9 @@ DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxx
 | 后台提示未登录 / 刚登录就掉线 | 后台 Token 存在 `http://localhost:5174` 这个源的 localStorage 下，换端口或换域名需要重新登录 |
 | 5174 启动报端口占用 | 关闭已在运行的 `dev:admin`，或改 `vite.admin.config.ts` 的 `server.port` |
 | AI 客服显示「演示模式」 | 正常：`server/.env` 的 `DEEPSEEK_API_KEY` 为空，填入后重启后端 |
-| AI 回答「额度已用完」 | 今日成本超过 `AI_DAILY_BUDGET_CNY`，可调大或次日再试 |
-| 后台看不到「AI 客服」菜单 | 执行 `npm run db:seed` 写入权限，并重新登录后台 |
+| AI 回答「额度已用完」 | 对应模块的当日成本超过 `AI_BUDGET_*_CNY`，可调大、换模块额度或次日再试 |
+| 后台看不到「AI」菜单 | 执行 `npm run db:seed` 写入权限，并重新登录后台 |
+| 搜索页一直显示「查询理解暂不可用」 | 场景被关闭（`settings` 里 `ai.scenario.search_parse.enabled=0` 或 `.env` 的 `AI_SCENARIOS` 缺项），或解析超时 `AI_SEARCH_PARSE_TIMEOUT_MS` |
 
 ## 说明
 

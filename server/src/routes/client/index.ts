@@ -130,4 +130,9 @@ router.get('/ai/conversations', requireAuth, ai.conversations)
 router.get('/ai/conversations/:id/messages', requireAuth, ai.messages)
 router.post('/ai/conversations/:id/transfer', requireAuth, ai.transfer)
 
+/* AI 平台化（改进方向 §8.1）：回答评价 + 搜索查询理解 + 热门搜索 */
+router.post('/ai/messages/:id/feedback', requireAuth, ai.rate)
+router.post('/ai/search/parse', optionalAuth, ai.searchParse)
+router.get('/search/hot', ai.searchHot)
+
 export default router

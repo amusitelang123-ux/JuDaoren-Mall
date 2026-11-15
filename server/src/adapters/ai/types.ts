@@ -45,6 +45,11 @@ export interface AiChatRequest {
   stream?: boolean
   signal?: AbortSignal
   onDelta?: (text: string) => void
+  /**
+   * 业务场景标识。厂商适配器可以忽略它；
+   * mock 适配器按它挑选预置话术，避免把客服话术写死在一个 composeAnswer 里。
+   */
+  scenario?: string
 }
 
 export interface AiChatResult {

@@ -664,6 +664,9 @@ export interface AdminFeedback {
   replyContent: string
   replyAt: string | null
   replier: string
+  /** 坐席辅助：AI 归类（咨询/投诉/建议/售后）与一句话摘要 */
+  aiCategory: string
+  aiSummary: string
   createdAt: string
 }
 
@@ -708,6 +711,9 @@ export interface AdminAiMessage {
   tokens: number
   model: string
   latencyMs: number
+  /** 1 有用 / -1 没用 / 0 未评价 */
+  rating: number
+  ratingReason: string
   createdAt: string
 }
 
@@ -719,21 +725,150 @@ export interface AdminAiUsageBucket {
   failures: number
 }
 
+/** 分模块 / 分场景用量：用于成本下钻与「按模块掐掉」 */
+export interface AdminAiModuleUsage {
+  module: string
+  moduleLabel: string
+  scenario: string
+  calls: number
+  tokens: number
+  cost: number
+  avgLatency: number
+  failures: number
+  fallbacks: number
+  cacheHits: number
+}
+
+export interface AdminAiBudget {
+  module: string
+  limit: number
+  spent: number
+  remaining: number
+}
+
+/** 质量指标：兜底率与转人工率是「深度」是否真的有效的关键单一指标 */
+export interface AdminAiQuality {
+  rated: number
+  up: number
+  down: number
+  upRate: number
+  corrected: number
+  fallbackRate: number
+  transferRate: number
+  fallbackCalls: number
+}
+
 export interface AdminAiUsage {
   mode: 'deepseek' | 'mock'
   model: string
   usingFallback: boolean
   today: AdminAiUsageBucket
   week: AdminAiUsageBucket
-  totals: { conversations: number; messages: number; knowledgeChunks: number }
+  totals: { conversations: number; messages: number; knowledgeChunks: number; transferred: number }
   knowledgeIndexedAt: string | null
+  budgets: AdminAiBudget[]
+  byModule: AdminAiModuleUsage[]
+  quality: AdminAiQuality
   daily: { date: string; calls: number; tokens: number; cost: number }[]
+}
+
+export interface AdminAiScenarioState {
+  scenario: string
+  module: string
+  enabled: boolean
+  envEnabled: boolean
+  settingEnabled: boolean | null
+  grayUserIds: number[]
+}
+
+export interface AdminAiRuntime {
+  scenarios: AdminAiScenarioState[]
+  breakers: Record<string, { failures: number; open: boolean }>
+  cache: { entries: number }
 }
 
 export interface AdminAiKnowledgeSync {
   total: number
   byType: Record<string, number>
   syncedAt: string
+}
+
+/* --------------------------- AI 文案 / 坐席辅助 --------------------------- */
+
+export type AdminCopyScene = 'product' | 'coupon' | 'notice' | 'seckill'
+
+export interface AdminCopyVariant {
+  title: string
+  subtitle: string
+  body: string
+  tags: string[]
+}
+
+export interface AdminCopyResult {
+  scene: AdminCopyScene
+  sceneLabel: string
+  variants: AdminCopyVariant[]
+  /** 因违禁词被拦截的条数 */
+  filtered: number
+  bannedWords: string[]
+  degraded: boolean
+  fallbackReason: string | null
+  latencyMs: number
+  aiGenerated: boolean
+}
+
+export interface AdminHelpdeskSimilar {
+  id: number
+  content: string
+  replyContent: string
+  createdAt: string
+  score: number
+}
+
+export interface AdminHelpdeskResult {
+  feedbackId: number
+  category: string
+  urgency: 'low' | 'normal' | 'high'
+  summary: string
+  draft: string
+  citations: AdminAiCitation[]
+  similarTickets: AdminHelpdeskSimilar[]
+  aiGenerated: boolean
+  degraded: boolean
+  fallbackReason: string | null
+  latencyMs: number
+}
+
+export interface AdminAiEvalCaseResult {
+  id: number
+  input: string
+  passed: boolean
+  failed: string[]
+  expected: unknown
+  actual: unknown
+  latencyMs: number
+  degraded: boolean
+  fallbackReason: string | null
+}
+
+export interface AdminAiEvalSummary {
+  scenario: string
+  total: number
+  passed: number
+  accuracy: number
+  avgLatency: number
+  p95Latency: number
+  degradedRate: number
+  cases: AdminAiEvalCaseResult[]
+}
+
+export interface AdminAiBadFeedback {
+  id: number
+  messageId: number
+  conversationId: number | null
+  reason: string
+  correctedAnswer: string
+  createdAt: string
 }
 
 export type { Order }

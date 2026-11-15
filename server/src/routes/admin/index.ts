@@ -180,11 +180,20 @@ router.get('/feedbacks', requirePermission('feedback:view'), feedback.list)
 router.put('/feedbacks/:id/reply', requirePermission('feedback:update'), feedback.reply)
 router.put('/feedbacks/:id/close', requirePermission('feedback:update'), feedback.close)
 
-/* AI 智能客服 */
+/* AI 平台（改进方向 §8.1/§8.2） */
 router.get('/ai/conversations', requirePermission('ai:view'), ai.conversations)
 router.get('/ai/conversations/:id/messages', requirePermission('ai:view'), ai.messages)
 router.get('/ai/usage', requirePermission('ai:view'), ai.usage)
+router.get('/ai/scenarios', requirePermission('ai:view'), ai.scenarios)
+router.get('/ai/availability', ai.availability)
 router.post('/ai/knowledge/rebuild', requirePermission('ai:manage'), ai.rebuild)
+/* 营销文案：域权限 ai:marketing */
+router.post('/ai/copywriting', requirePermission('ai:marketing'), ai.copywriting)
+/* 坐席辅助：域权限 ai:helpdesk */
+router.post('/ai/feedback/:id/draft', requirePermission('ai:helpdesk'), ai.feedbackDraft)
+router.get('/ai/feedback/bad', requirePermission('ai:view'), ai.badFeedback)
+/* 评测集 */
+router.post('/ai/eval', requirePermission('ai:manage'), ai.evaluate)
 
 /* 系统配置 */
 router.get('/settings', requirePermission('system:view'), setting.list)

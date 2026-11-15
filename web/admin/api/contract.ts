@@ -4,6 +4,12 @@ import type {
   AdminAiKnowledgeSync,
   AdminAiMessage,
   AdminAiUsage,
+  AdminAiRuntime,
+  AdminAiBadFeedback,
+  AdminAiEvalSummary,
+  AdminCopyResult,
+  AdminCopyScene,
+  AdminHelpdeskResult,
   AdminBanner,
   AdminBrand,
   AdminCategoryNode,
@@ -240,8 +246,23 @@ export interface AdminApi {
     }): Promise<PageResult<AdminAiConversation>>
     messages(id: number): Promise<AdminAiMessage[]>
     usage(): Promise<AdminAiUsage>
+    /** 场景开关 / 灰度 / 熔断 / 缓存规模 */
+    runtime(): Promise<AdminAiRuntime>
     /** 重建知识库（FAQ / 公告 / 物流 / 运费 / 平台规则） */
     rebuild(): Promise<AdminAiKnowledgeSync>
+    /** 营销文案生成（一次 3 个版本，违禁词整条拦截，不自动保存） */
+    copywriting(payload: {
+      scene: AdminCopyScene
+      brief: string
+      tone?: string
+      variantCount?: number
+    }): Promise<AdminCopyResult>
+    /** 坐席辅助：归类 + 相似工单 + 回复草稿（草稿不写库） */
+    feedbackDraft(id: number): Promise<AdminHelpdeskResult>
+    /** 跑评测集，返回各场景准确率 */
+    evaluate(scenario?: string): Promise<{ summaries: AdminAiEvalSummary[]; total: number }>
+    /** 最近差评样本（含纠错文本） */
+    badFeedback(limit?: number): Promise<AdminAiBadFeedback[]>
   }
   settingApi: {
     list(): Promise<AdminSetting[]>

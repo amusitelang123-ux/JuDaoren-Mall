@@ -40,6 +40,9 @@ import type {
   AiConfig,
   AiConversationItem,
   AiStreamHandlers,
+  AiRatePayload,
+  AiSearchParseResult,
+  AiHotKeyword,
 } from './types'
 
 export interface ProductQuery {
@@ -277,6 +280,15 @@ export interface ClientApi {
     messages(conversationId: number): Promise<AiChatMessage[]>
     /** 转人工：把最近对话摘要写成留言工单 */
     transfer(conversationId: number, note?: string): Promise<{ feedbackId: number; conversationId: number }>
+    /** 评价一条 AI 回答（👍/👎 + 纠错） */
+    rateMessage(
+      messageId: number,
+      payload: AiRatePayload,
+    ): Promise<{ messageId: number; rating: number; saved: boolean }>
+    /** 搜索查询理解：解析失败不报错，返回 degraded=true 的规则结果 */
+    parseSearch(query: string): Promise<AiSearchParseResult>
+    /** 热门搜索（由搜索埋点聚合） */
+    searchHot(): Promise<AiHotKeyword[]>
   }
 }
 

@@ -2,14 +2,20 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { brandApi, categoryApi, productApi } from '@/api'
-import type { Brand, Category, Product } from '@/api/types'
+import type { Brand, Category, Product, ProductFilterPatch } from '@/api/types'
 import ProductCard from './ProductCard.vue'
 import Pagination from './Pagination.vue'
 import EmptyState from './EmptyState.vue'
 import { findTopCategoryId } from '@/utils/category'
 
 const props = withDefaults(
-  defineProps<{ categoryId?: number; keyword?: string; showCategoryTree?: boolean }>(),
+  defineProps<{
+    categoryId?: number
+    keyword?: string
+    showCategoryTree?: boolean
+    /** 外部带入的筛选条件（搜索页的 AI 查询理解结果）；变化时覆盖当前筛选 */
+    filters?: ProductFilterPatch
+  }>(),
   { showCategoryTree: true },
 )
 
@@ -71,6 +77,20 @@ async function fetchList() {
   loading.value = false
 }
 
+/**
+ * 合并刷新：搜索页会同时更新 keyword 与 filters，
+ * 用微任务合并成一次请求，避免列表闪两下。
+ */
+let refreshScheduled = false
+function scheduleFetch() {
+  if (refreshScheduled) return
+  refreshScheduled = true
+  void Promise.resolve().then(() => {
+    refreshScheduled = false
+    void fetchList()
+  })
+}
+
 function pickTop(id: number) {
   activeTop.value = activeTop.value === id ? undefined : id
   query.categoryId = activeTop.value
@@ -129,8 +149,27 @@ watch(
   (kw) => {
     query.keyword = kw
     query.page = 1
-    fetchList()
+    scheduleFetch()
   },
+)
+watch(
+  () => props.filters,
+  (filters) => {
+    if (!filters) return
+    // filters 是「完整的外部筛选状态」：没给的字段会被清掉，
+    // 这样搜索页点掉某个 chip 时条件才能真的撤销。
+    query.categoryId = filters.categoryId
+    activeTop.value = filters.categoryId
+      ? findTopCategoryId(filters.categoryId, categories.value)
+      : undefined
+    query.brandId = filters.brandId
+    query.minPrice = filters.minPrice
+    query.maxPrice = filters.maxPrice
+    query.sortBy = filters.sortBy ?? 'default'
+    query.page = 1
+    scheduleFetch()
+  },
+  { deep: true },
 )
 watch(
   () => route.query.brandId,

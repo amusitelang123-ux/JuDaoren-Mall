@@ -1,5 +1,5 @@
 import { http } from '../request'
-import type { Brand, Category, CommentItem, Coupon, CouponPreviewResult, DeleteOrderResult, LoginLogItem, MyComment, MyComments, MyPoints, MyWallet, RechargeStatusResult, ActivePromotion, FaqGroup, LogisticsCompanyItem, ActiveSeckill, FeedbackItem, PublicConfig, Order, OrderLogisticsDetail, PageResult, PayStatusResult, PrepayResult, Product, Address, CartItem, Refund, RebuyResult, RemindShipResult, UserInfo, Notice, AiChatDonePayload, AiChatMessage, AiConfig, AiConversationItem, AiUsage } from '../types'
+import type { Brand, Category, CommentItem, Coupon, CouponPreviewResult, DeleteOrderResult, LoginLogItem, MyComment, MyComments, MyPoints, MyWallet, RechargeStatusResult, ActivePromotion, FaqGroup, LogisticsCompanyItem, ActiveSeckill, FeedbackItem, PublicConfig, Order, OrderLogisticsDetail, PageResult, PayStatusResult, PrepayResult, Product, Address, CartItem, Refund, RebuyResult, RemindShipResult, UserInfo, Notice, AiChatDonePayload, AiChatMessage, AiConfig, AiConversationItem, AiUsage, AiSearchParseResult, AiHotKeyword } from '../types'
 import type {
   AddressPayload,
   CartAddPayload,
@@ -280,5 +280,19 @@ export const realApi: ClientApi = {
         `/ai/conversations/${conversationId}/transfer`,
         { note },
       ),
+
+    rateMessage: (messageId, payload) =>
+      http.post<{ messageId: number; rating: number; saved: boolean }>(
+        `/ai/messages/${messageId}/feedback`,
+        payload,
+      ),
+
+    parseSearch: (query) =>
+      http.post<AiSearchParseResult>('/ai/search/parse', { query }),
+
+    async searchHot() {
+      const data = await http.get<{ items: AiHotKeyword[] }>('/search/hot')
+      return data.items ?? []
+    },
   },
 }

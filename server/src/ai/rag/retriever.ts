@@ -1,14 +1,12 @@
-import { Op } from 'sequelize'
-import { AiKbChunk, Faq, FreightTemplate, LogisticsCompany, Notice } from '../models'
-import { AI_POLICIES } from './aiPolicies'
+import { AiKbChunk } from '../../models'
+import { syncKnowledgeBase } from './sync'
 
 /**
- * 知识库与检索。
+ * 词法检索（BM25）。
  *
- * DeepSeek 目前不提供 embedding 接口，因此这里用「中文二元组 + BM25」做词法检索：
- * - 对 FAQ / 公告 / 物流 / 运费模板 / 平台规则 建立切片
- * - 检索完全在 Node 内存中完成（语料百级，耗时 < 5ms），不引入向量库
- * - 后续接入 embedding 服务时，只需替换 searchKnowledge 的召回实现
+ * 与旧 aiKnowledgeService.searchKnowledge 的实现等价，搬进 rag/ 之后：
+ * - `tokenize()` 对外导出，商品重排、问大家相似问都能复用同一套中文切分；
+ * - 索引只包含 `searchable !== false` 的知识源，商品不进来（改进方向 §4 A3 的取舍）。
  */
 
 const CACHE_TTL_MS = 60_000
@@ -67,18 +65,11 @@ interface KnowledgeIndex {
 }
 
 let index: KnowledgeIndex | null = null
-let syncing: Promise<SyncResult> | null = null
-
-export interface SyncResult {
-  total: number
-  byType: Record<string, number>
-  syncedAt: string
-}
 
 /** 中文二元组 + 英文/数字词；过滤无意义二元组 */
 export function tokenize(text: string): string[] {
   const tokens: string[] = []
-  const normalized = text.toLowerCase()
+  const normalized = (text ?? '').toLowerCase()
 
   for (const match of normalized.matchAll(/[a-z][a-z0-9]{1,}/g)) tokens.push(match[0])
   for (const run of normalized.match(/[\u4e00-\u9fa5]+/g) ?? []) {
@@ -91,21 +82,15 @@ export function tokenize(text: string): string[] {
   return tokens
 }
 
-function topKeywords(tf: Map<string, number>, limit = 8): string {
+export function topKeywords(text: string, limit = 8): string {
+  const tf = new Map<string, number>()
+  for (const token of tokenize(text)) tf.set(token, (tf.get(token) ?? 0) + 1)
   return [...tf.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
     .map(([token]) => token)
     .join(' ')
     .slice(0, 500)
-}
-
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
 }
 
 function buildDocs(rows: AiKbChunk[]): KnowledgeDoc[] {
@@ -148,12 +133,7 @@ function buildIndex(docs: KnowledgeDoc[]): KnowledgeIndex {
     idf.set(token, Math.log(1 + (total - count + 0.5) / (count + 0.5)))
   })
 
-  return {
-    docs,
-    idf,
-    avgdl: total ? totalLength / total : 1,
-    at: Date.now(),
-  }
+  return { docs, idf, avgdl: total ? totalLength / total : 1, at: Date.now() }
 }
 
 async function ensureIndex(): Promise<KnowledgeIndex> {
@@ -168,93 +148,9 @@ async function ensureIndex(): Promise<KnowledgeIndex> {
   return index
 }
 
-/** 知识库同步：把 FAQ / 公告 / 物流 / 运费模板与平台规则写入切片表（幂等） */
-export async function syncKnowledgeBase(): Promise<SyncResult> {
-  if (syncing) return syncing
-
-  syncing = (async () => {
-    const [faqs, notices, companies, templates] = await Promise.all([
-      Faq.findAll({ where: { status: 1 } }),
-      Notice.findAll({ where: { status: 1 } }),
-      LogisticsCompany.findAll({ where: { status: 1 } }),
-      FreightTemplate.findAll({ where: { status: 1 } }),
-    ])
-
-    const groups: Record<string, { sourceId: number; title: string; content: string }[]> = {
-      faq: faqs.map((faq) => ({
-        sourceId: Number(faq.id),
-        title: `常见问题 · ${faq.category}：${faq.question}`,
-        content: `问：${faq.question}\n答：${faq.answer ?? '暂未填写答案'}`,
-      })),
-      notice: notices.map((notice) => {
-        const body = stripHtml(notice.content ?? '')
-        return {
-          sourceId: Number(notice.id),
-          title: `公告：${notice.title}`,
-          content: `${notice.title}\n${body}`.slice(0, 2000),
-        }
-      }),
-      logistics: companies.map((company) => ({
-        sourceId: Number(company.id),
-        title: `物流公司：${company.name}`,
-        content: `编码：${company.code}；客服电话：${company.phone ?? '未提供'}`,
-      })),
-      freight: templates.map((template) => ({
-        sourceId: Number(template.id),
-        title: `运费模板：${template.name}${template.isDefault ? '（默认）' : ''}`,
-        content: `满 ${Number(template.freeAmount)} 元包邮；未达门槛收取 ${Number(template.baseFreight)} 元运费。`,
-      })),
-      policy: AI_POLICIES.map((policy, itemIndex) => ({
-        sourceId: itemIndex + 1,
-        title: `平台规则：${policy.title}`,
-        content: policy.content,
-      })),
-    }
-
-    const byType: Record<string, number> = {}
-    for (const [sourceType, items] of Object.entries(groups)) {
-      byType[sourceType] = items.length
-      if (!items.length) {
-        await AiKbChunk.destroy({ where: { sourceType } })
-        continue
-      }
-
-      const rows = items.map((item) => {
-        const tf = new Map<string, number>()
-        for (const token of tokenize(`${item.title} ${item.content}`)) {
-          tf.set(token, (tf.get(token) ?? 0) + 1)
-        }
-        return {
-          sourceType,
-          sourceId: item.sourceId,
-          title: item.title.slice(0, 255),
-          content: item.content,
-          keywords: topKeywords(tf),
-          status: 1,
-        }
-      })
-
-      await AiKbChunk.bulkCreate(rows, {
-        updateOnDuplicate: ['title', 'content', 'keywords', 'status'],
-      })
-      await AiKbChunk.destroy({
-        where: {
-          sourceType,
-          sourceId: { [Op.notIn]: items.map((item) => item.sourceId) },
-        },
-      })
-    }
-
-    const total = await AiKbChunk.count({ where: { status: 1 } })
-    index = null
-    return { total, byType, syncedAt: new Date().toISOString() }
-  })()
-
-  try {
-    return await syncing
-  } finally {
-    syncing = null
-  }
+/** 知识库内容变化后调用，强制下次检索重建索引 */
+export function invalidateIndex(): void {
+  index = null
 }
 
 /** BM25 检索；无命中返回空数组，由调用方决定「转人工」话术 */
@@ -279,6 +175,47 @@ export async function searchKnowledge(question: string, limit = 4): Promise<Know
 
   return scored
     .filter((item) => item.score >= MIN_SCORE)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(({ doc, score }) => ({
+      chunkId: doc.chunkId,
+      sourceType: doc.sourceType,
+      sourceId: doc.sourceId,
+      title: doc.title,
+      content: doc.content,
+      score: Math.round(score * 100) / 100,
+      snippet: doc.content.slice(0, 160),
+    }))
+}
+
+/** 相似文本检索（问大家 / 坐席辅助复用）：不设 MIN_SCORE 硬阈值，按分数返回 */
+export async function searchSimilar(
+  text: string,
+  options: { limit?: number; sourceTypes?: string[] } = {},
+): Promise<KnowledgeHit[]> {
+  const limit = options.limit ?? 3
+  const queryTokens = [...new Set(tokenize(text))]
+  if (!queryTokens.length) return []
+
+  const current = await ensureIndex()
+  const docs = options.sourceTypes?.length
+    ? current.docs.filter((doc) => options.sourceTypes!.includes(doc.sourceType))
+    : current.docs
+  if (!docs.length) return []
+
+  return docs
+    .map((doc) => {
+      let score = 0
+      for (const token of queryTokens) {
+        const tf = doc.tf.get(token)
+        if (!tf) continue
+        const idf = current.idf.get(token) ?? 0
+        const denom = tf + K1 * (1 - B + (B * doc.length) / current.avgdl)
+        score += idf * ((tf * (K1 + 1)) / denom)
+      }
+      return { doc, score }
+    })
+    .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map(({ doc, score }) => ({
