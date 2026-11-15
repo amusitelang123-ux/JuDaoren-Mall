@@ -1,4 +1,4 @@
-import type { Address, CartItem, CommentItem, Coupon, CouponPreviewResult, DeleteOrderResult, LoginLogItem, MyComment, MyComments, MyPoints, MyWallet, RechargePayload, RechargeStatusResult, BalanceLog, BalanceRecharge, ActivePromotion, FaqGroup, LogisticsCompanyItem, ActiveSeckill, FeedbackItem, PublicConfig, Order, OrderLogisticsDetail, PageResult, PayStatusResult, PrepayResult, RebuyResult, Refund, RebuySkippedItem, RemindShipResult, AiChatDonePayload, AiChatMessage, AiCitation, AiConfig, AiConversationItem } from '../types'
+import type { Address, CartItem, CommentItem, Coupon, CouponPreviewResult, DeleteOrderResult, LoginLogItem, MyComment, MyComments, MyPoints, MyWallet, RechargePayload, RechargeStatusResult, BalanceLog, BalanceRecharge, ActivePromotion, FaqGroup, LogisticsCompanyItem, ActiveSeckill, FeedbackItem, PublicConfig, Order, OrderLogisticsDetail, PageResult, PayStatusResult, PrepayResult, RebuyResult, Refund, RebuySkippedItem, RemindShipResult, AiChatDonePayload, AiChatMessage, AiCitation, AiConfig, AiConversationItem, AiParsedSearch, AiSearchParseResult, AiSearchChip } from '../types'
 import type {
   AddressPayload,
   ApplyRefundPayload,
@@ -79,8 +79,7 @@ function citation(title: string, snippet: string): AiCitation {
   return { sourceType: 'policy', sourceId: null, title, snippet }
 }
 
-function mockAiAnswer(question: string): { text: string; citations: AiCitation[] } {
-  if (/物流|快递|到哪|签收/.test(question)) {
+function mockAiAnswer(question: string): { text: string; citations: AiCitation[] } {  if (/物流|快递|到哪|签收/.test(question)) {
     return {
       text: '（演示模式）物流信息以订单详情的「查看物流」为准。已发货订单一般 24 小时内更新轨迹；超过 48 小时没有揽收记录，可以在订单详情点「提醒发货」，或转人工催件。',
       citations: [citation('平台规则：发货时效', '发货后物流轨迹通常在 24 小时内更新；超过 48 小时没有揽收记录，可提醒发货或联系人工客服。')],
@@ -115,6 +114,96 @@ function mockAiAnswer(question: string): { text: string; citations: AiCitation[]
     citations: [],
   }
 }
+/* --------------------- 搜索查询理解（演示版规则解析） --------------------- */
+
+/**
+ * 演示模式下不调用模型，这里用一份简化的规则解析模拟后端返回结构，
+ * 保证前端 chips / 过滤逻辑在 mock 模式下同样可以联调。
+ */
+function mockParseSearch(query: string): AiSearchParseResult {
+  const text = query.trim()
+  const maxPriceHit = text.match(/(\d+(?:\.\d+)?)\s*(?:元|块)?\s*(?:以内|以下|之内)/)
+  const minPriceHit = text.match(/(\d+(?:\.\d+)?)\s*(?:元|块)?\s*(?:以上|起)/)
+  const rangeHit = text.match(/(\d+(?:\.\d+)?)\s*[-~到至]\s*(\d+(?:\.\d+)?)/)
+
+  let minPrice: number | null = null
+  let maxPrice: number | null = null
+  if (rangeHit) {
+    minPrice = Math.min(Number(rangeHit[1]), Number(rangeHit[2]))
+    maxPrice = Math.max(Number(rangeHit[1]), Number(rangeHit[2]))
+  } else {
+    if (maxPriceHit) maxPrice = Number(maxPriceHit[1])
+    if (minPriceHit) minPrice = Number(minPriceHit[1])
+  }
+
+  const category = mockCategories.find((item) => text.includes(item.name))
+  const brand = mockBrands.find((item) => text.includes(item.name))
+
+  let sortBy: AiParsedSearch['sortBy'] = 'default'
+  if (/最便宜|便宜|低价|性价比/.test(text)) sortBy = 'priceAsc'
+  else if (/销量|热卖|爆款/.test(text)) sortBy = 'sales'
+  else if (/最新|新款/.test(text)) sortBy = 'new'
+
+  let keyword = text
+  for (const fragment of [
+    category?.name ?? '',
+    brand?.name ?? '',
+    maxPriceHit?.[0] ?? '',
+    minPriceHit?.[0] ?? '',
+    rangeHit?.[0] ?? '',
+    '最便宜的',
+    '最便宜',
+    '便宜点',
+    '销量最高',
+    '最新',
+    '的',
+  ]) {
+    if (fragment) keyword = keyword.split(fragment).join(' ')
+  }
+  keyword = keyword.replace(/[，。！？、,.!?~\-—]+/g, ' ').replace(/\s+/g, ' ').trim()
+
+  const parsed: AiParsedSearch = {
+    keyword: keyword || text,
+    categoryId: category?.id ?? null,
+    categoryName: category?.name ?? '',
+    brandId: brand?.id ?? null,
+    brandName: brand?.name ?? '',
+    minPrice,
+    maxPrice,
+    attributes: [],
+    sortBy,
+  }
+
+  const resultCount = mockProducts.filter((product) => {
+    if (parsed.keyword && !product.name.includes(parsed.keyword)) return false
+    if (parsed.categoryId && topCategoryId(product.categoryId) !== parsed.categoryId) return false
+    if (maxPrice !== null && product.priceMin > maxPrice) return false
+    if (minPrice !== null && product.priceMax < minPrice) return false
+    return true
+  }).length
+
+  const chips: AiSearchChip[] = []
+  if (parsed.keyword) chips.push({ field: 'keyword', label: `「${parsed.keyword}」`, value: parsed.keyword })
+  if (parsed.categoryName) chips.push({ field: 'category', label: parsed.categoryName, value: parsed.categoryName })
+  if (parsed.brandName) chips.push({ field: 'brand', label: parsed.brandName, value: parsed.brandName })
+  if (maxPrice !== null) chips.push({ field: 'price', label: `≤ ¥${maxPrice}`, value: 'max' })
+  if (minPrice !== null) chips.push({ field: 'price', label: `≥ ¥${minPrice}`, value: 'min' })
+  if (sortBy === 'priceAsc') chips.push({ field: 'sort', label: '价格从低到高', value: sortBy })
+
+  return {
+    query: text,
+    parsed,
+    chips,
+    degraded: true,
+    fallbackReason: 'mock',
+    relaxed: [],
+    resultCount,
+    latencyMs: 0,
+    timeoutMs: 0,
+    mode: 'mock',
+  }
+}
+
 let balanceLogs: BalanceLog[] = []
 let rechargeRecords: BalanceRecharge[] = []
 
@@ -857,5 +946,18 @@ export const mockApi: ClientApi = {
 
     transfer: (conversationId: number) =>
       delay({ feedbackId: Date.now(), conversationId }),
+
+    rateMessage: (messageId: number, payload) =>
+      delay({ messageId, rating: payload.rating, saved: true }),
+
+    parseSearch: (query: string) => delay(mockParseSearch(query)),
+
+    searchHot: () =>
+      delay(
+        [...mockProducts]
+          .sort((a, b) => b.salesCount - a.salesCount)
+          .slice(0, 8)
+          .map((product) => ({ keyword: product.name, count: product.salesCount })),
+      ),
   },
 }

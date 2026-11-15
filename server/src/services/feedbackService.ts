@@ -26,6 +26,9 @@ function toFeedbackDto(f: Feedback & { user?: User | null }) {
     replyContent: f.replyContent ?? '',
     replyAt: f.replyAt ? formatDate(f.replyAt) : null,
     replier: f.replier ?? '',
+    /** 坐席辅助：AI 归类与摘要，AI 不可用时为空字符串 */
+    aiCategory: f.aiCategory ?? '',
+    aiSummary: f.aiSummary ?? '',
     createdAt: formatDate(f.createdAt),
   }
 }

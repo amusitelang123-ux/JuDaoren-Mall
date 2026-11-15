@@ -54,7 +54,15 @@ import {
 } from './content'
 import { StatDaily } from './stat'
 import { BalanceLog, BalanceRecharge } from './wallet'
-import { AiCallLog, AiConversation, AiKbChunk, AiMessage } from './ai'
+import {
+  AiCallLog,
+  AiConversation,
+  AiEvalCase,
+  AiFeedback,
+  AiKbChunk,
+  AiMessage,
+  SearchLog,
+} from './ai'
 
 /* ------------------------------ Associations ------------------------------ */
 
@@ -218,4 +226,7 @@ export {
   AiMessage,
   AiKbChunk,
   AiCallLog,
+  AiFeedback,
+  AiEvalCase,
+  SearchLog,
 }

@@ -6,6 +6,11 @@ import type {
   AdminAiKnowledgeSync,
   AdminAiMessage,
   AdminAiUsage,
+  AdminAiRuntime,
+  AdminAiBadFeedback,
+  AdminAiEvalSummary,
+  AdminCopyResult,
+  AdminHelpdeskResult,
   AdminBanner,
   AdminBrand,
   AdminCategoryNode,
@@ -288,7 +293,16 @@ export const adminApi: AdminApi = {
       adminHttp.get<PageResult<AdminAiConversation>>('/ai/conversations', paramsOf(query)),
     messages: (id) => adminHttp.get<AdminAiMessage[]>(`/ai/conversations/${id}/messages`),
     usage: () => adminHttp.get<AdminAiUsage>('/ai/usage'),
+    runtime: () => adminHttp.get<AdminAiRuntime>('/ai/scenarios'),
     rebuild: () => adminHttp.post<AdminAiKnowledgeSync>('/ai/knowledge/rebuild'),
+    copywriting: (payload) => adminHttp.post<AdminCopyResult>('/ai/copywriting', payload),
+    feedbackDraft: (id) => adminHttp.post<AdminHelpdeskResult>(`/ai/feedback/${id}/draft`),
+    evaluate: (scenario) =>
+      adminHttp.post<{ summaries: AdminAiEvalSummary[]; total: number }>('/ai/eval', {
+        scenario,
+      }),
+    badFeedback: (limit = 20) =>
+      adminHttp.get<AdminAiBadFeedback[]>('/ai/feedback/bad', { limit }),
   },
 }
 

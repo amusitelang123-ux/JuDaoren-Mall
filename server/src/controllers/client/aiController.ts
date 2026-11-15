@@ -2,7 +2,8 @@ import type { NextFunction, Request, Response } from 'express'
 import { z } from 'zod'
 import { asyncHandler } from '../../middlewares/asyncHandler'
 import { sendOk } from '../../utils/response'
-import * as aiChatService from '../../services/aiChatService'
+import { customerService as aiChat, searchParse as aiSearchParse } from '../../ai'
+import * as aiFeedback from '../../ai/feedback'
 
 /** 客户端 AI 智能客服接口 */
 
@@ -27,7 +28,7 @@ const idSchema = z.object({
 
 /** AI 能力开关与欢迎语（公开，未登录也能拿到展示配置） */
 export const config = asyncHandler(async (_req: Request, res: Response) => {
-  sendOk(res, aiChatService.publicConfig())
+  sendOk(res, aiChat.publicConfig())
 })
 
 /**
@@ -61,7 +62,7 @@ export async function chat(req: Request, res: Response, next: NextFunction): Pro
 
   if (!body.stream) {
     try {
-      const outcome = await aiChatService.chat({ ...payload, emit: () => undefined })
+      const outcome = await aiChat.chat({ ...payload, emit: () => undefined })
       sendOk(res, outcome)
     } catch (error) {
       next(error)
@@ -89,7 +90,7 @@ export async function chat(req: Request, res: Response, next: NextFunction): Pro
   })
 
   try {
-    await aiChatService.chat({
+    await aiChat.chat({
       ...payload,
       emit: (event) => {
         if (event.type === 'error') emittedError = true
@@ -113,18 +114,58 @@ export async function chat(req: Request, res: Response, next: NextFunction): Pro
 /** 我的 AI 会话（可按订单过滤），用于弹窗重开时恢复上下文 */
 export const conversations = asyncHandler(async (req: Request, res: Response) => {
   const query = listQuerySchema.parse(req.query)
-  sendOk(res, await aiChatService.listConversations(req.auth!.uid, query.orderNo))
+  sendOk(res, await aiChat.listConversations(req.auth!.uid, query.orderNo))
 })
 
 export const messages = asyncHandler(async (req: Request, res: Response) => {
   const { id } = idSchema.parse(req.params)
-  sendOk(res, await aiChatService.getMessages(req.auth!.uid, id))
+  sendOk(res, await aiChat.getMessages(req.auth!.uid, id))
 })
 
 /** 转人工：把最近对话摘要写成留言工单，进入现有客服处理流 */
 export const transfer = asyncHandler(async (req: Request, res: Response) => {
   const { id } = idSchema.parse(req.params)
   const body = transferSchema.parse(req.body)
-  const result = await aiChatService.transferToHuman(req.auth!.uid, id, body.note)
+  const result = await aiChat.transferToHuman(req.auth!.uid, id, body.note)
   sendOk(res, result, '已转人工，客服会尽快回复')
+})
+
+/* ---------------------- 回答评价（👍/👎 + 纠错） ---------------------- */
+
+const rateSchema = z.object({
+  rating: z.union([z.literal(1), z.literal(-1)]),
+  reason: z.string().trim().max(100).optional(),
+  correctedAnswer: z.string().trim().max(1000).optional(),
+})
+
+/** 评价一条 AI 回答；同一用户对同一条消息重复评价会覆盖 */
+export const rate = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = idSchema.parse(req.params)
+  const body = rateSchema.parse(req.body)
+  sendOk(res, await aiFeedback.rateMessage(req.auth!.uid, id, body), '感谢你的反馈')
+})
+
+/* -------------------------- 搜索查询理解（A1） -------------------------- */
+
+const parseSchema = z.object({
+  query: z.string().trim().min(1, '请输入搜索词').max(60),
+})
+
+/**
+ * 把搜索口语解析成检索参数。
+ * 解析失败 / 超时 / 场景关闭时**不报错**，返回 degraded=true + 规则解析结果，
+ * 搜索主链路永远可用（改进方向 §4 A1 验收标准）。
+ */
+export const searchParse = asyncHandler(async (req: Request, res: Response) => {
+  const { query } = parseSchema.parse(req.body)
+  const result = await aiSearchParse.parseSearchQuery({
+    query,
+    userId: req.auth?.uid ?? null,
+  })
+  sendOk(res, result)
+})
+
+/** 热门搜索：由 search_logs 聚合，取代前端硬编码 */
+export const searchHot = asyncHandler(async (_req: Request, res: Response) => {
+  sendOk(res, { items: await aiSearchParse.hotKeywords(8) })
 })

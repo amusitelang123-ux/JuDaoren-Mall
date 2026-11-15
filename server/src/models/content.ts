@@ -126,6 +126,10 @@ export class Feedback extends Model<InferAttributes<Feedback>, InferCreationAttr
   declare replyContent: string | null
   declare replyAt: Date | null
   declare replier: string | null
+  /** AI 坐席辅助：归类（咨询/投诉/建议/售后），AI 不可用时为 null */
+  declare aiCategory: string | null
+  /** AI 坐席辅助：一句话摘要 */
+  declare aiSummary: string | null
   declare createdAt: CreationOptional<Date>
   declare updatedAt: CreationOptional<Date>
 }
@@ -143,6 +147,8 @@ Feedback.init(
     replyContent: { type: DataTypes.TEXT, allowNull: true },
     replyAt: { type: DataTypes.DATE, allowNull: true },
     replier: { type: DataTypes.STRING(50), allowNull: true },
+    aiCategory: { type: DataTypes.STRING(20), allowNull: true, field: 'ai_category' },
+    aiSummary: { type: DataTypes.STRING(255), allowNull: true, field: 'ai_summary' },
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE,
   },

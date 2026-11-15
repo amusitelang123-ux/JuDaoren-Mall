@@ -47,6 +47,10 @@ interface AiUiMessage {
   content: string
   citations: AiCitation[]
   pending?: boolean
+  /** 后端 ai_messages.id：只有落库后的回答才能评价 */
+  messageId?: number
+  /** 1 有用 / -1 没用 / 0 未评价 */
+  rating?: number
 }
 
 const aiConfig = ref<AiConfig | null>(null)
@@ -110,6 +114,7 @@ async function reload() {
       role: item.role,
       content: item.content,
       citations: item.citations ?? [],
+      messageId: item.role === 'assistant' ? item.id : undefined,
     }))
     scrollToBottom()
   } catch {
@@ -184,6 +189,7 @@ async function send(preset?: string) {
       if (abort !== controller) return
       target.content = done.content
       target.citations = done.citations
+      target.messageId = done.messageId
       target.pending = false
       statusText.value = ''
       scrollToBottom()
@@ -207,6 +213,7 @@ async function send(preset?: string) {
     if (abort !== controller) return
     if (!target.content) target.content = result.content
     target.citations = result.citations
+    if (result.messageId) target.messageId = result.messageId
   } catch (error) {
     if (abort !== controller) return
     const aborted = (error as { name?: string })?.name === 'AbortError'
@@ -232,6 +239,20 @@ async function send(preset?: string) {
 
 function stop() {
   abort?.abort()
+}
+
+/** 回答评价：👍/👎 直接落 ai_feedback，👎 允许补充一句原因 */
+async function rate(message: AiUiMessage, rating: 1 | -1) {
+  if (!message.messageId || message.rating === rating) return
+  const previous = message.rating ?? 0
+  message.rating = rating
+  try {
+    await aiApi.rateMessage(message.messageId, { rating })
+    ui.toast(rating === 1 ? '感谢反馈' : '已记录，我们会持续改进', 'success')
+  } catch (error) {
+    message.rating = previous
+    ui.toast(error instanceof Error ? error.message : '评价提交失败', 'error')
+  }
 }
 
 /** 转人工：后端把最近对话摘要写成留言工单 */
@@ -332,6 +353,29 @@ onUnmounted(() => {
               >
                 [{{ i + 1 }}] {{ c.title }}
               </span>
+            </div>
+            <div
+              v-if="m.role === 'assistant' && m.messageId && !m.pending && aiConfig?.feedbackEnabled !== false"
+              class="ai-rate"
+            >
+              <button
+                type="button"
+                class="ai-rate__btn"
+                :class="{ 'is-active': m.rating === 1 }"
+                title="这个回答有帮助"
+                @click="rate(m, 1)"
+              >
+                👍
+              </button>
+              <button
+                type="button"
+                class="ai-rate__btn"
+                :class="{ 'is-active': m.rating === -1 }"
+                title="这个回答没帮到我"
+                @click="rate(m, -1)"
+              >
+                👎
+              </button>
             </div>
           </div>
         </div>
@@ -523,11 +567,38 @@ onUnmounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.ai-rate {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.ai-rate__btn {
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 12px;
+  line-height: 1.6;
+  cursor: pointer;
+  opacity: 0.55;
+  filter: grayscale(1);
+  transition: opacity 0.15s ease, filter 0.15s ease, border-color 0.15s ease;
+}
+.ai-rate__btn:hover {
+  opacity: 1;
+  filter: none;
+  border-color: var(--border);
+}
+.ai-rate__btn.is-active {
+  opacity: 1;
+  filter: none;
+  border-color: var(--amz-orange);
+  background: #fff7ef;
+}
 .ai-status {
   font-size: 12px;
   margin: 2px 0 0 4px;
-}
-.ai-error {
+}.ai-error {
   font-size: 12.5px;
   color: var(--amz-price);
   background: #fff2f0;

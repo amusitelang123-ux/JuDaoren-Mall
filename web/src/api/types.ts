@@ -586,6 +586,8 @@ export interface AiConfig {
   welcome: string
   quickQuestions: string[]
   disclaimer: string
+  /** 是否开放回答评价（👍/👎） */
+  feedbackEnabled?: boolean
 }
 
 /** 知识引用：回答里 [1]、[2] 指向的 FAQ / 规则 */
@@ -654,6 +656,8 @@ export interface AiChatDonePayload {
   usage: AiUsage
   grounded: boolean
   mode: 'deepseek' | 'mock'
+  /** 有值说明这次回答走了降级路径 */
+  fallbackReason?: string
 }
 
 export interface AiChatResult {
@@ -673,4 +677,64 @@ export interface AiStreamHandlers {
   onTool?: (tool: { name: string; label: string }) => void
   onDone?: (payload: AiChatDonePayload) => void
   onError?: (message: string) => void
+}
+
+/* ---------------------- AI 平台化：评价 / 搜索理解 ---------------------- */
+
+/** 回答评价：1 有用 / -1 没用；纠错文本会作为评测集素材 */
+export interface AiRatePayload {
+  rating: 1 | -1
+  reason?: string
+  correctedAnswer?: string
+}
+
+export type AiChipField = 'keyword' | 'category' | 'brand' | 'price' | 'attribute' | 'sort'
+
+/** 结果页顶部的「AI 理解为」chips，用户可点掉某一项修正 */
+export interface AiSearchChip {
+  field: AiChipField
+  label: string
+  value: string
+}
+
+/** 查询理解后实际生效的检索参数 */
+export interface AiParsedSearch {
+  keyword: string
+  categoryId: number | null
+  categoryName: string
+  brandId: number | null
+  brandName: string
+  minPrice: number | null
+  maxPrice: number | null
+  attributes: string[]
+  sortBy: 'default' | 'sales' | 'priceAsc' | 'priceDesc' | 'new'
+}
+
+export interface AiSearchParseResult {
+  query: string
+  parsed: AiParsedSearch
+  chips: AiSearchChip[]
+  /** true 表示走了规则降级（AI 超时 / 关闭 / 校验失败） */
+  degraded: boolean
+  fallbackReason: string | null
+  /** 被放宽掉的过滤条件 */
+  relaxed: string[]
+  resultCount: number
+  latencyMs: number
+  timeoutMs: number
+  mode: 'deepseek' | 'mock'
+}
+
+export interface AiHotKeyword {
+  keyword: string
+  count: number
+}
+
+/** 商品列表的外置筛选条件（搜索页把 AI 解析结果透传给 ProductBrowser） */
+export interface ProductFilterPatch {
+  categoryId?: number
+  brandId?: number
+  minPrice?: number
+  maxPrice?: number
+  sortBy?: 'default' | 'sales' | 'priceAsc' | 'priceDesc' | 'new'
 }

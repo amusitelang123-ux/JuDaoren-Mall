@@ -23,3 +23,14 @@ export function toInt(value: unknown, fallback: number): number {
   const n = Number(value)
   return Number.isFinite(n) ? Math.trunc(n) : fallback
 }
+
+/** 去掉 HTML 标签与实体，供知识库切片 / 摘要场景复用 */
+export function stripHtml(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
