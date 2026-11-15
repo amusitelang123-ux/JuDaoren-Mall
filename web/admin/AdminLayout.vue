@@ -33,8 +33,8 @@ async function onCommand(command: string) {
   <div class="admin-layout">
     <aside class="admin-aside">
       <div class="admin-logo">
-        <span class="admin-logo__mark">兔</span>
-        <span class="admin-logo__text">小兔鲜 · 管理后台</span>
+        <img src="/logo-mark.png" class="admin-logo__mark" alt="" width="28" height="28" />
+        <span class="admin-logo__text">菊道人 · 管理后台</span>
       </div>
       <el-menu :default-active="activePath" router class="admin-menu">
         <el-menu-item v-for="m in menus" :key="m.path" :index="m.path">
@@ -91,14 +91,11 @@ async function onCommand(command: string) {
   font-weight: 500;
 }
 .admin-logo__mark {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  background: #fe7c00;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 .admin-menu {
   border-right: none;

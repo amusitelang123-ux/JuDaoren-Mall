@@ -71,7 +71,7 @@ const SCENE_RULES: Record<CopyScene, string> = {
 }
 
 function buildSystemPrompt(scene: CopyScene): string {
-  return `你是小兔鲜商城的运营文案助手。根据运营提供的要点，为「${SCENE_LABEL[scene]}」写 3 个风格不同的版本。
+  return `你是菊道人商城的运营文案助手。根据运营提供的要点，为「${SCENE_LABEL[scene]}」写 3 个风格不同的版本。
 
 ${SCENE_RULES[scene]}
 

@@ -52,7 +52,7 @@ function toAdminUserDto(user: User & { level?: UserLevel | null }) {
   return {
     id: Number(user.id),
     username: user.username ?? '',
-    nickname: user.nickname ?? user.username ?? '小兔用户',
+    nickname: user.nickname ?? user.username ?? '菊友',
     avatar: user.avatar ?? '',
     phone: user.phone ?? '',
     maskedPhone: maskPhone(user.phone),

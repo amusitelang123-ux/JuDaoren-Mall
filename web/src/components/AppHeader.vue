@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { categoryApi, configApi } from '@/api'
 import type { Category, PublicConfig } from '@/api/types'
+import CategoryIcon from '@/components/CategoryIcon.vue'
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
@@ -102,10 +103,9 @@ function logout() {
     <!-- Top row -->
     <div class="hdr__top">
       <div class="container hdr__top-inner">
-        <router-link to="/" class="hdr__logo" :aria-label="`${siteConfig?.siteName || '小兔鲜'}首页`">
-          <img v-if="siteConfig?.logo" :src="siteConfig.logo" class="hdr__logo-img" alt="" />
-          <span v-else class="hdr__logo-mark">🐰</span>
-          <span class="hdr__logo-text">{{ siteConfig?.siteName || '小兔鲜' }}</span>
+        <router-link to="/" class="hdr__logo" :aria-label="`${siteConfig?.siteName || '菊道人'}首页`">
+          <img :src="siteConfig?.logo || '/logo-mark.png'" class="hdr__logo-img" alt="菊道人" />
+          <span class="hdr__logo-text">{{ siteConfig?.siteName || '菊道人' }}</span>
         </router-link>
 
         <button class="hdr__deliver" type="button" @click="router.push(user.isLoggedIn ? '/user' : '/login')">
@@ -232,7 +232,8 @@ function logout() {
             <div v-if="showDept" class="hdr__dept-panel">
               <div v-for="c in tops" :key="c.id" class="hdr__dept-col">
                 <button class="hdr__dept-title" type="button" @click="goCategory(c.id)">
-                  <span>{{ c.icon }}</span> {{ c.name }}
+                  <CategoryIcon :category="c" :size="18" />
+                  <span>{{ c.name }}</span>
                 </button>
                 <div class="hdr__dept-links">
                   <button
@@ -299,14 +300,12 @@ function logout() {
 .hdr__logo:hover {
   border-color: #fff;
 }
-.hdr__logo-mark {
-  font-size: 24px;
-}
 .hdr__logo-img {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
-  border-radius: 6px;
+  border-radius: 7px;
+  flex-shrink: 0;
 }
 .hdr__logo-text {
   font-size: 22px;

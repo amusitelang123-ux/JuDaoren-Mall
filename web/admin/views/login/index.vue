@@ -45,10 +45,10 @@ async function submit() {
       <!-- 品牌区：与后台深色侧边栏同一视觉语言 -->
       <aside class="login-brand">
         <div class="login-brand__logo">
-          <span class="login-brand__mark">兔</span>
+          <img src="/logo-mark.png" class="login-brand__mark" alt="" width="44" height="44" />
           <div class="login-brand__names">
-            <strong>小兔鲜</strong>
-            <em>XIAOTUXIAN MALL</em>
+            <strong>菊道人</strong>
+            <em>JUDAOREN MALL</em>
           </div>
         </div>
 
@@ -62,7 +62,7 @@ async function submit() {
           </li>
         </ul>
 
-        <p class="login-brand__foot">© 2026 小兔鲜电商 · 教学演示项目</p>
+        <p class="login-brand__foot">© 2026 菊道人商城 · 教学演示项目</p>
       </aside>
 
       <!-- 表单区 -->
@@ -194,13 +194,8 @@ async function submit() {
   height: 44px;
   flex-shrink: 0;
   border-radius: 12px;
-  background: linear-gradient(160deg, #fe7c00, #ff9c3f);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  font-weight: 600;
-  box-shadow: 0 6px 16px rgba(254, 124, 0, 0.35);
+  object-fit: contain;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
 }
 .login-brand__names {
   display: flex;

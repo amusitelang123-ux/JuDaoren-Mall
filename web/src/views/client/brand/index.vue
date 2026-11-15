@@ -9,9 +9,15 @@ import EmptyState from '@/components/EmptyState.vue'
 const router = useRouter()
 const brands = ref<Brand[]>([])
 const loading = ref(true)
+/** 记录加载失败的封面，回退为品牌首字，避免出现破图 */
+const failedLogos = ref<Record<number, boolean>>({})
 
 function goBrand(brand: Brand) {
   router.push({ path: '/products', query: { brandId: String(brand.id) } })
+}
+
+function markLogoFailed(id: number) {
+  failedLogos.value[id] = true
 }
 
 onMounted(async () => {
@@ -38,10 +44,22 @@ onMounted(async () => {
 
       <div v-else-if="brands.length" class="brand-grid">
         <button v-for="b in brands" :key="b.id" class="brand-card card" @click="goBrand(b)">
-          <img v-if="b.logo" :src="b.logo" :alt="b.name" class="brand-card__logo" />
-          <span v-else class="brand-card__initial">{{ b.name.slice(0, 1) }}</span>
-          <span class="brand-card__name">{{ b.name }}</span>
-          <span class="brand-card__action">进入品牌 ›</span>
+          <span class="brand-card__media">
+            <img
+              v-if="b.logo && !failedLogos[b.id]"
+              :src="b.logo"
+              :alt="`${b.name}品牌图片`"
+              class="brand-card__image"
+              loading="lazy"
+              decoding="async"
+              @error="markLogoFailed(b.id)"
+            />
+            <span v-else class="brand-card__initial">{{ b.name.slice(0, 1) }}</span>
+          </span>
+          <span class="brand-card__body">
+            <span class="brand-card__name">{{ b.name }}</span>
+            <span class="brand-card__action">进入品牌 ›</span>
+          </span>
         </button>
       </div>
 
@@ -80,50 +98,70 @@ onMounted(async () => {
 }
 .brand-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
 }
 .brand-card {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 24px 16px;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0;
+  padding: 0;
   border: 1px solid var(--border-light);
   background: #fff;
   cursor: pointer;
+  overflow: hidden;
+  text-align: left;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .brand-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
-.brand-card__logo {
-  width: 72px;
-  height: 72px;
-  object-fit: contain;
-  border-radius: 8px;
+.brand-card__media {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: linear-gradient(135deg, #f5f6f7, #e9edf0);
+}
+.brand-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s ease;
+}
+.brand-card:hover .brand-card__image {
+  transform: scale(1.04);
 }
 .brand-card__initial {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 30px;
+  font-size: 38px;
   font-weight: 800;
   color: #6b4300;
   background: linear-gradient(135deg, #ffe0a3, #febd69);
 }
+.brand-card__body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+}
 .brand-card__name {
   font-size: 15px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--text);
 }
 .brand-card__action {
   font-size: 13px;
   color: var(--amz-link);
+  white-space: nowrap;
 }
 </style>

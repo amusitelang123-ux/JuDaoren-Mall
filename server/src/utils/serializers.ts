@@ -88,7 +88,7 @@ export function toCommentDto(comment: ProductComment & { user?: User | null }) {
   return {
     id: num(comment.id),
     userId: num(comment.userId),
-    nickname: comment.isAnonymous ? '匿名用户' : comment.user?.nickname ?? '小兔用户',
+    nickname: comment.isAnonymous ? '匿名用户' : comment.user?.nickname ?? '菊友',
     avatar: comment.isAnonymous ? '' : comment.user?.avatar ?? '',
     score: comment.score,
     content: comment.content,
@@ -135,7 +135,7 @@ export function toUserDto(user: User & { level?: { name: string } | null }) {
   return {
     id: num(user.id),
     username: user.username ?? '',
-    nickname: user.nickname ?? user.username ?? '小兔用户',
+    nickname: user.nickname ?? user.username ?? '菊友',
     avatar: user.avatar ?? '',
     phone: maskPhone(user.phone),
     gender: user.gender ?? 0,

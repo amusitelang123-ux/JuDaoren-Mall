@@ -64,7 +64,7 @@ async function quickAdd() {
       <p class="pcard__subtitle">{{ product.subtitle }}</p>
 
       <div class="pcard__badges">
-        <span class="badge-prime">小兔速达</span>
+        <span class="badge-prime">菊速达</span>
         <span class="pcard__sales">已售 {{ product.salesCount.toLocaleString() }}</span>
       </div>
 

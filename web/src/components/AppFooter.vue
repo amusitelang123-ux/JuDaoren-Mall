@@ -4,7 +4,7 @@ import { configApi } from '@/api'
 import type { PublicConfig } from '@/api/types'
 
 const columns = [
-  { title: '了解我们', links: ['关于小兔鲜', '加入我们', '品牌故事', '联系方式'] },
+  { title: '了解我们', links: ['关于菊道人', '加入我们', '品牌故事', '联系方式'] },
   { title: '购物指南', links: ['购物流程', '会员介绍', '常见问题', '联系客服'] },
   { title: '配送方式', links: ['配送范围', '运费说明', '海外配送', '自提点'] },
   { title: '售后服务', links: ['退换货政策', '退款说明', '取消订单', '价格保护'] },
@@ -38,7 +38,7 @@ onMounted(async () => {
           </ul>
         </div>
         <div class="ftr__col ftr__brand">
-          <h4>{{ config?.siteName || '小兔鲜' }} · 平台自营</h4>
+          <h4>{{ config?.siteName || '菊道人' }} · 平台自营</h4>
           <p>{{ config?.slogan || '正品保障 · 极速配送 · 售后无忧' }}</p>
           <p v-if="config?.servicePhone" class="ftr__hotline">客服热线 {{ config.servicePhone }}</p>
           <p v-if="config?.serviceHours" class="ftr__hotline">{{ config.serviceHours }}</p>
@@ -50,7 +50,7 @@ onMounted(async () => {
     </div>
     <div class="ftr__bottom">
       <div class="container">
-        <p>© 2026 {{ config?.siteName || '小兔鲜' }}电商 XiaoTuXian Mall · 仅用于教学演示，非真实交易平台</p>
+        <p>© 2026 {{ config?.siteName || '菊道人' }}电商 JuDaoren Mall · 仅用于教学演示，非真实交易平台</p>
         <p>粤ICP备00000000号 · 增值电信业务经营许可证</p>
       </div>
     </div>

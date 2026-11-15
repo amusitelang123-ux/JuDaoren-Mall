@@ -173,7 +173,7 @@ const hotKeywords = computed(() =>
 
       <template v-else>
         <div class="search-empty card">
-          <h1>搜索小兔鲜</h1>
+          <h1>搜索菊道人</h1>
           <div class="search-empty__block">
             <h3>搜索历史
               <button v-if="app.searchHistory.length" @click="app.clearHistory()">清除</button>

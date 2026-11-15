@@ -65,7 +65,7 @@ export interface PublicSettings {
 export async function publicSettings(): Promise<PublicSettings> {
   const map = await loadSettingMap()
   return {
-    siteName: map['site.name'] || '小兔鲜',
+    siteName: map['site.name'] || '菊道人',
     logo: map['site.logo'] || '',
     slogan: map['site.slogan'] || '',
     servicePhone: map['service.phone'] || '',

@@ -61,7 +61,7 @@ function placeholder(seed, label, w = 500, h = 500) {
 
 function avatar(name) {
   const [c1, c2] = PALETTES[hash(name) % PALETTES.length]
-  const letter = escapeXml((name.trim()[0] || '兔').toUpperCase())
+  const letter = escapeXml((name.trim()[0] || '菊').toUpperCase())
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs><circle cx="32" cy="32" r="32" fill="url(#g)"/><text x="32" y="33" font-size="28" text-anchor="middle" dominant-baseline="central" fill="#fff" font-family="sans-serif" font-weight="700">${letter}</text></svg>`
   return writeSvg(`avatar-${hash(name).toString(16)}`, svg)
 }
@@ -108,6 +108,20 @@ const BRANDS = [
   '墨韵书房',
   '臻选严选',
 ]
+
+/** 品牌专区封面图（本地素材，来源见 web/public/brand-images/README.md） */
+const BRAND_IMAGES = {
+  兔鲜优选: '/brand-images/rabbit-fresh.jpg',
+  极光科技: '/brand-images/aurora-tech.jpg',
+  云栖家居: '/brand-images/cloud-home.jpg',
+  拾光良品: '/brand-images/time-good.jpg',
+  山野农夫: '/brand-images/wild-farmer.jpg',
+  悦己主义: '/brand-images/self-love.jpg',
+  小兔宝贝: '/brand-images/baby-rabbit.jpg',
+  风行运动: '/brand-images/wind-sports.jpg',
+  墨韵书房: '/brand-images/ink-study.jpg',
+  臻选严选: '/brand-images/select.jpg',
+}
 
 const SPEC_LIB = {
   101: [
@@ -203,7 +217,7 @@ function buildBrands() {
   return BRANDS.map((name, i) => ({
     id: i + 1,
     name,
-    logo: placeholder(`brand-${i}`, name, 120, 60),
+    logo: BRAND_IMAGES[name] ?? placeholder(`brand-${i}`, name, 120, 60),
     sort: i + 1,
     status: 1,
     created_at: now,
@@ -442,7 +456,7 @@ function buildMarketing(products, skus) {
 
   const notices = [
     {
-      title: '小兔鲜平台服务升级公告',
+      title: '菊道人平台服务升级公告',
       content: '为提供更好的购物体验，平台将于近期进行系统升级。',
       type: 1,
       status: 1,

@@ -50,15 +50,16 @@ export const categories: Category[] = [
 ]
 
 export const brands: Brand[] = [
-  { id: 1, name: '兔鲜优选', logo: placeholder('兔鲜优选', '兔鲜', 120, 60) },
-  { id: 2, name: '极光科技', logo: placeholder('极光科技', '极光', 120, 60) },
-  { id: 3, name: '云栖家居', logo: placeholder('云栖家居', '云栖', 120, 60) },
-  { id: 4, name: '拾光良品', logo: placeholder('拾光良品', '拾光', 120, 60) },
-  { id: 5, name: '山野农夫', logo: placeholder('山野农夫', '山野', 120, 60) },
-  { id: 6, name: '悦己主义', logo: placeholder('悦己主义', '悦己', 120, 60) },
-  { id: 7, name: '小兔宝贝', logo: placeholder('小兔宝贝', '宝贝', 120, 60) },
-  { id: 8, name: '风行运动', logo: placeholder('风行运动', '风行', 120, 60) },
-  { id: 9, name: '墨韵书房', logo: placeholder('墨韵书房', '墨韵', 120, 60) },
+  { id: 1, name: '兔鲜优选', logo: '/brand-images/rabbit-fresh.jpg' },
+  { id: 2, name: '极光科技', logo: '/brand-images/aurora-tech.jpg' },
+  { id: 3, name: '云栖家居', logo: '/brand-images/cloud-home.jpg' },
+  { id: 4, name: '拾光良品', logo: '/brand-images/time-good.jpg' },
+  { id: 5, name: '山野农夫', logo: '/brand-images/wild-farmer.jpg' },
+  { id: 6, name: '悦己主义', logo: '/brand-images/self-love.jpg' },
+  { id: 7, name: '小兔宝贝', logo: '/brand-images/baby-rabbit.jpg' },
+  { id: 8, name: '风行运动', logo: '/brand-images/wind-sports.jpg' },
+  { id: 9, name: '墨韵书房', logo: '/brand-images/ink-study.jpg' },
+  { id: 10, name: '臻选严选', logo: '/brand-images/select.jpg' },
 ]
 
 const brandName = (id: number) => brands.find((b) => b.id === id)?.name ?? '兔鲜优选'
@@ -392,8 +393,8 @@ export const orderStatusText: Record<OrderStatus, string> = {
 export const notices: Notice[] = [
   {
     id: 1,
-    title: '小兔鲜平台服务升级公告',
-    content: '为提供更好的购物体验，小兔鲜将于近期进行系统升级。升级期间下单、支付、售后与物流查询功能均不受影响，商品浏览可能短暂变慢，请耐心等待。感谢您的理解与支持。',
+    title: '菊道人平台服务升级公告',
+    content: '为提供更好的购物体验，菊道人将于近期进行系统升级。升级期间下单、支付、售后与物流查询功能均不受影响，商品浏览可能短暂变慢，请耐心等待。感谢您的理解与支持。',
     type: 1,
     publishAt: '2026-10-21 10:20:00',
     createdAt: '2026-10-21 10:20:00',
@@ -401,7 +402,7 @@ export const notices: Notice[] = [
   {
     id: 2,
     title: '双十一预售开启，爆款好物低至 5 折',
-    content: '小兔鲜双十一预售已正式开启，数码、生鲜、家居三大会场爆款低至 5 折。预售订单支持定金膨胀，尾款支付期间可叠加多档满减，名额有限先到先得。',
+    content: '菊道人双十一预售已正式开启，数码、生鲜、家居三大会场爆款低至 5 折。预售订单支持定金膨胀，尾款支付期间可叠加多档满减，名额有限先到先得。',
     type: 1,
     publishAt: '2026-10-19 09:00:00',
     createdAt: '2026-10-19 09:00:00',
@@ -409,7 +410,7 @@ export const notices: Notice[] = [
   {
     id: 3,
     title: '生鲜产地直采配送范围扩大至 218 个城市',
-    content: '即日起，小兔鲜生鲜产地直采配送范围扩大至 218 个城市，冷链商品次日达，偏远地区同步上线当日达专区。下单时请以结算页预计送达时间为准。',
+    content: '即日起，菊道人生鲜产地直采配送范围扩大至 218 个城市，冷链商品次日达，偏远地区同步上线当日达专区。下单时请以结算页预计送达时间为准。',
     type: 1,
     publishAt: '2026-10-15 15:30:00',
     createdAt: '2026-10-15 15:30:00',
@@ -417,7 +418,7 @@ export const notices: Notice[] = [
   {
     id: 4,
     title: '积分商城上线，每日签到领好礼',
-    content: '小兔鲜积分商城正式上线，每日签到即可领积分，积分可兑换平台优惠券与免运费券。本月内登录即送 500 积分，签到连续 7 天额外奖励翻倍。',
+    content: '菊道人积分商城正式上线，每日签到即可领积分，积分可兑换平台优惠券与免运费券。本月内登录即送 500 积分，签到连续 7 天额外奖励翻倍。',
     type: 1,
     publishAt: '2026-10-12 08:00:00',
     createdAt: '2026-10-12 08:00:00',

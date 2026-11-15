@@ -10,7 +10,7 @@ import type { KnowledgeHit } from '../rag/retriever'
  */
 
 export const AI_WELCOME =
-  '你好，我是小兔鲜 AI 客服。订单、物流、退换货、发票、优惠券的问题都可以问我；需要人工处理时随时点「转人工」。'
+  '你好，我是菊道人 AI 客服。订单、物流、退换货、发票、优惠券的问题都可以问我；需要人工处理时随时点「转人工」。'
 
 export const AI_QUICK_QUESTIONS = [
   '我的订单什么时候发货？',

@@ -77,7 +77,7 @@ export async function register(
     username: input.username ?? null,
     phone: input.phone ?? null,
     password: hash,
-    nickname: input.username ?? (input.phone ? `兔友${input.phone.slice(-4)}` : '兔友'),
+    nickname: input.username ?? (input.phone ? `菊友${input.phone.slice(-4)}` : '菊友'),
     avatar: '',
     points: 0,
   })

@@ -136,7 +136,7 @@ export async function draftFeedbackReply(
     scenario: 'helpdesk_draft',
     subjectId: adminId ?? null,
     actor: { role: 'admin', adminId },
-    system: `你是小兔鲜商城的客服主管，正在辅助人工客服处理一条用户留言工单。
+    system: `你是菊道人商城的客服主管，正在辅助人工客服处理一条用户留言工单。
 
 【工单信息】
 - 用户：${userText}

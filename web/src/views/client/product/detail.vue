@@ -264,7 +264,7 @@ watch(
               <ul>
                 <li>· {{ product.subtitle }}</li>
                 <li>· 平台自营正品，假一赔十</li>
-                <li>· 小兔速达，48 小时内发货</li>
+                <li>· 菊速达，48 小时内发货</li>
               </ul>
             </div>
           </div>

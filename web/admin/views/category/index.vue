@@ -61,26 +61,72 @@ async function removeCategory(node: AdminCategoryNode) {
 }
 
 /* --------------------------------- 品牌 ----------------------------------- */
-const brandDialog = reactive({ visible: false, mode: 'create' as 'create' | 'edit', id: 0, name: '', sort: 0, status: 1 })
+const brandDialog = reactive({
+  visible: false,
+  mode: 'create' as 'create' | 'edit',
+  id: 0,
+  name: '',
+  logo: '',
+  sort: 0,
+  status: 1,
+})
+const brandUploading = ref(false)
 
 function openCreateBrand() {
-  Object.assign(brandDialog, { visible: true, mode: 'create', id: 0, name: '', sort: 0, status: 1 })
+  Object.assign(brandDialog, { visible: true, mode: 'create', id: 0, name: '', logo: '', sort: 0, status: 1 })
 }
 
 function openEditBrand(row: AdminBrand) {
-  Object.assign(brandDialog, { visible: true, mode: 'edit', id: row.id, name: row.name, sort: row.sort, status: row.status })
+  Object.assign(brandDialog, {
+    visible: true,
+    mode: 'edit',
+    id: row.id,
+    name: row.name,
+    logo: row.logo || '',
+    sort: row.sort,
+    status: row.status,
+  })
+}
+
+async function onBrandUpload(file: File) {
+  if (!file.type.startsWith('image/')) {
+    ElMessage.warning('请选择图片文件')
+    return false
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.warning('图片大小不能超过 5MB')
+    return false
+  }
+
+  brandUploading.value = true
+  try {
+    const res = await adminApi.uploadApi.image(file)
+    brandDialog.logo = res.url
+    ElMessage.success('品牌图片已上传')
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '上传失败')
+  } finally {
+    brandUploading.value = false
+  }
+  return false
 }
 
 async function submitBrand() {
-  if (!brandDialog.name) {
+  if (!brandDialog.name.trim()) {
     ElMessage.warning('请输入品牌名称')
     return
   }
   try {
+    const payload = {
+      name: brandDialog.name.trim(),
+      logo: brandDialog.logo.trim(),
+      sort: brandDialog.sort,
+      status: brandDialog.status,
+    }
     if (brandDialog.mode === 'create') {
-      await adminApi.brandApi.create({ name: brandDialog.name, sort: brandDialog.sort, status: brandDialog.status })
+      await adminApi.brandApi.create(payload)
     } else {
-      await adminApi.brandApi.update(brandDialog.id, { name: brandDialog.name, sort: brandDialog.sort, status: brandDialog.status })
+      await adminApi.brandApi.update(brandDialog.id, payload)
     }
     ElMessage.success('已保存')
     brandDialog.visible = false
@@ -212,6 +258,19 @@ onMounted(async () => {
           <el-table :data="brands" stripe>
             <el-table-column label="ID" prop="id" width="80" />
             <el-table-column label="品牌名" prop="name" />
+            <el-table-column label="品牌图片" width="140">
+              <template #default="{ row }">
+                <el-image
+                  v-if="row.logo"
+                  :src="row.logo"
+                  :preview-src-list="[row.logo]"
+                  preview-teleported
+                  fit="cover"
+                  class="brand-thumb"
+                />
+                <span v-else class="muted">未设置</span>
+              </template>
+            </el-table-column>
             <el-table-column label="排序" prop="sort" width="90" />
             <el-table-column label="状态" width="90">
               <template #default="{ row }">
@@ -265,9 +324,36 @@ onMounted(async () => {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="brandDialog.visible" :title="brandDialog.mode === 'create' ? '新增品牌' : '编辑品牌'" width="420px">
-      <el-form label-width="80px">
-        <el-form-item label="品牌名"><el-input v-model="brandDialog.name" /></el-form-item>
+    <el-dialog v-model="brandDialog.visible" :title="brandDialog.mode === 'create' ? '新增品牌' : '编辑品牌'" width="560px">
+      <el-form label-width="88px">
+        <el-form-item label="品牌名">
+          <el-input v-model="brandDialog.name" maxlength="50" show-word-limit />
+        </el-form-item>
+        <el-form-item label="品牌图片">
+          <div class="brand-image-field">
+            <el-upload
+              class="brand-image-upload"
+              :show-file-list="false"
+              :before-upload="onBrandUpload"
+              :disabled="brandUploading"
+              accept="image/*"
+            >
+              <div v-if="brandDialog.logo" class="brand-image-preview" :class="{ 'is-uploading': brandUploading }">
+                <img :src="brandDialog.logo" alt="品牌图片预览" />
+                <span class="brand-image-mask">{{ brandUploading ? '上传中…' : '点击更换' }}</span>
+              </div>
+              <div v-else class="brand-image-empty" :class="{ 'is-uploading': brandUploading }">
+                <span class="brand-image-plus">+</span>
+                <span>{{ brandUploading ? '上传中…' : '上传品牌图片' }}</span>
+              </div>
+            </el-upload>
+            <div class="brand-image-side">
+              <el-input v-model="brandDialog.logo" placeholder="或粘贴网络图片地址" clearable />
+              <p class="brand-image-tip">建议 16:9 / 4:3 横图，将作为用户端品牌专区封面展示</p>
+              <el-button v-if="brandDialog.logo" link type="danger" @click="brandDialog.logo = ''">移除图片</el-button>
+            </div>
+          </div>
+        </el-form-item>
         <el-form-item label="排序"><el-input-number v-model="brandDialog.sort" :min="0" /></el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="brandDialog.status" :active-value="1" :inactive-value="0" />
@@ -310,6 +396,92 @@ onMounted(async () => {
 }
 .spec-tag {
   margin-right: 6px;
+}
+.brand-thumb {
+  width: 104px;
+  height: 60px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  display: block;
+  cursor: zoom-in;
+}
+.brand-image-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+}
+.brand-image-upload {
+  flex: none;
+}
+.brand-image-preview,
+.brand-image-empty {
+  width: 180px;
+  height: 110px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.brand-image-preview {
+  position: relative;
+  background: #f5f6f8;
+  cursor: pointer;
+}
+.brand-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.brand-image-mask {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(17, 24, 39, 0.48);
+  color: #fff;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.brand-image-preview:hover .brand-image-mask,
+.brand-image-preview.is-uploading .brand-image-mask {
+  opacity: 1;
+}
+.brand-image-empty {
+  border: 1px dashed #cbd5e1;
+  background: #fafbfc;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.brand-image-empty:hover {
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
+}
+.brand-image-plus {
+  font-size: 22px;
+  line-height: 1;
+}
+.brand-image-side {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.brand-image-tip {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #94a3b8;
 }
 .muted {
   color: #9aa3af;
