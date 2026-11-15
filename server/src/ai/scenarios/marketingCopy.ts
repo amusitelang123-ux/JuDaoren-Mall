@@ -193,7 +193,7 @@ export async function generateCopywriting(
     ],
     schema: copySchema,
     temperature: 0.7,
-    maxTokens: 700,
+    maxTokens: 1600,
     timeoutMs: 20_000,
     fallback: () => null,
   })
